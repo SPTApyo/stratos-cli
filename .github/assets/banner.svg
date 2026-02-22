@@ -1,0 +1,27 @@
+<svg width="720" height="140" viewBox="0 0 720 140" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#007cf0;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#7b2ff7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ff0080;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <style>
+    .ascii {
+      font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
+      font-size: 12px;
+      fill: url(#grad);
+      white-space: pre;
+    }
+  </style>
+  <text x="50%" y="20" text-anchor="middle" class="ascii">
+    <tspan x="50%" y="20"> ███           █████████  ██████████ █████████    ████████   ██████████  █████████   █████████ </tspan>
+    <tspan x="50%" y="36">░░░███        ███░░░░░███░░░░░███░░░░███░░░░███  ███░░░░░███░░░░░███░░░ ███░░░░░███ ███░░░░░███</tspan>
+    <tspan x="50%" y="52">  ░░░███     ░███    ░░░     ░███   ░███   ░███ ░███    ░███    ░███   ░███    ░███░███    ░░░ </tspan>
+    <tspan x="50%" y="68">    ░░░███   ░░█████████     ░███   ░█████████  ░███████████    ░███   ░███    ░███░░█████████ </tspan>
+    <tspan x="50%" y="84">     ███░     ░░░░░░░░███    ░███   ░███░░░░███ ░███░░░░░███    ░███   ░███    ░███ ░░░░░░░░███</tspan>
+    <tspan x="50%" y="100">   ███░       ███    ░███    ░███   ░███   ░███ ░███    ░███    ░███   ░███    ░███ ███    ░███</tspan>
+    <tspan x="50%" y="116"> ███░        ░░█████████     █████  █████  ████ █████   █████   █████  ░░█████████ ░░█████████ </tspan>
+    <tspan x="50%" y="132">░░░           ░░░░░░░░░     ░░░░░  ░░░░░  ░░░░ ░░░░░   ░░░░░   ░░░░░    ░░░░░░░░░   ░░░░░░░░░  </tspan>
+  </text>
+</svg>

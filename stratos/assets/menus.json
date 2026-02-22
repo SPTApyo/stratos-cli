@@ -1,0 +1,71 @@
+{
+    "MAIN": {
+        "title": "CONTROL",
+        "path": "/main",
+        "options": [
+            {"id": "LAUNCH", "label": "START AGENT TEAM", "desc": "Initialize multi-agent cooperation"},
+            {"id": "SETTINGS", "label": "SYSTEM SETTINGS", "desc": "Configure core parameters"},
+            {"id": "EXIT", "label": "EXIT STRATOS", "desc": "Terminate processes"}
+        ]
+    },
+    "SETTINGS": {
+        "title": "SETTINGS",
+        "path": "/settings",
+        "options": [
+            {"id": "PATH", "label": "PROJECTS PATH", "desc": "Set root directory"},
+            {"id": "THEME_MENU", "label": "VISUAL THEME", "desc": "UI & Syntax colors"},
+            {"id": "DISPLAY_MODE", "label": "DISPLAY INTERFACE", "desc": "Switch Dashboard / Console"},
+            {"id": "SHOW_RESULTS", "label": "RESULT PREVIEW", "desc": "Show code snippets in logs"},
+            {"id": "THOUGHTS", "label": "THOUGHT FLOW", "desc": "Toggle reasoning logs"},
+            {"id": "DEBUG", "label": "DEBUG MODE", "desc": "Technical tracing"},
+            {"id": "AUTH", "label": "IDENTITY CONFIG", "desc": "Manage Gemini API Key"},
+            {"id": "BACK", "label": "BACK TO MAIN", "desc": "Return to control"}
+        ]
+    },
+    "THEME_MENU": {
+        "title": "VISUAL THEME",
+        "path": "/settings/theme",
+        "options": [
+            {"id": "THEME_MODE", "label": "APPEARANCE MODE", "desc": "Switch Dark / Light UI"},
+            {"id": "THEME_SELECT", "label": "THEME PALETTE", "desc": "Choose your color style"},
+            {"id": "BACK_SETTINGS", "label": "BACK", "desc": "Return to settings"}
+        ]
+    },
+    "THEME_MODE": {
+        "title": "APPEARANCE MODE",
+        "path": "/settings/theme/mode",
+        "options": [
+            {"id": "MODE_DARK", "label": "DARK MODE", "desc": "Optimized for low-light"},
+            {"id": "MODE_LIGHT", "label": "LIGHT MODE", "desc": "High contrast UI"},
+            {"id": "BACK_THEME", "label": "BACK", "desc": "Return to theme menu"}
+        ]
+    },
+    "THEME_SELECT": {
+        "title": "THEME PALETTE",
+        "path": "/settings/theme/select",
+        "options": [
+            {"id": "stratos", "label": "STRATOS", "desc": "Flagship high-contrast gradient"},
+            {"id": "one", "label": "ATOM ONE", "desc": "Official Atom style"},
+            {"id": "github", "label": "GITHUB", "desc": "Classic Octocat aesthetic"},
+            {"id": "dracula", "label": "DRACULA", "desc": "Vampire palette"},
+            {"id": "nord", "label": "NORD", "desc": "Arctic North-Blue"},
+            {"id": "gruvbox", "label": "GRUVBOX", "desc": "Retro earthy colors"},
+            {"id": "catppuccin", "label": "CATPPUCCIN", "desc": "Soothing pastel tones"},
+            {"id": "ayu", "label": "AYU", "desc": "Modern and elegant"},
+            {"id": "solarized", "label": "SOLARIZED", "desc": "Precision palette"},
+            {"id": "shades_of_purple", "label": "PURPLE", "desc": "Vibrant and bold"},
+            {"id": "googlecode", "label": "GOOGLE CODE", "desc": "Classic dev style"},
+            {"id": "xcode", "label": "XCODE", "desc": "Apple IDE style (Light only)"},
+            {"id": "ansi", "label": "TERMINAL", "desc": "Standard ANSI colors"},
+            {"id": "BACK_THEME", "label": "BACK", "desc": "Return to theme menu"}
+        ]
+    },
+    "AUTH": {
+        "title": "IDENTITY",
+        "path": "/auth",
+        "options": [
+            {"id": "key", "label": "UPDATE API KEY", "desc": "Enter your Gemini API Key"},
+            {"id": "BACK_SETTINGS", "label": "BACK", "desc": "Return to settings"}
+        ]
+    }
+}

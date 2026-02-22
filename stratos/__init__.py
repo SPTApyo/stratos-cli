@@ -1,0 +1,7 @@
+__version__ = "0.1"
+__app_name__ = "stratos-cli"
+__description__ = "Multi-Agent Autonomous Coding System for Terminal"
+__author__ = "SPTApyo"
+__author_email__ = "laroussinabil.311@gmail.com"
+__url__ = "https://github.com/SPTApyo/stratos-cli"
+__license__ = "MIT"

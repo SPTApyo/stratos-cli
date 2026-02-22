@@ -1,0 +1,4 @@
+{
+    "python.defaultInterpreterPath": "${workspaceFolder}/stratos/venv/bin/python",
+    "python.analysis.extraPaths": ["${workspaceFolder}/stratos/venv/lib/python3.14/site-packages"]
+}

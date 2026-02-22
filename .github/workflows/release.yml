@@ -1,0 +1,207 @@
+name: Release & Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: write
+      id-token: write # Required for PyPI trusted publishing
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract metadata
+        id: meta
+        run: |
+          VERSION=$(grep "__version__" stratos/__init__.py | cut -d '"' -f 2)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG_NAME=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag ${{ steps.meta.outputs.TAG_NAME }}
+          git push origin ${{ steps.meta.outputs.TAG_NAME }}
+        continue-on-error: true
+
+      - name: Build Distribution
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+          python -m build
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.meta.outputs.TAG_NAME }}
+          name: Stratos ${{ steps.meta.outputs.TAG_NAME }}
+          body: |
+            Automated release of version ${{ steps.meta.outputs.VERSION }}.
+          draft: false
+          prerelease: false
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+
+  deploy-aur:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract metadata
+        id: meta
+        run: |
+          VERSION=$(grep "__version__" stratos/__init__.py | cut -d '"' -f 2)
+          APP_NAME=$(grep "__app_name__" stratos/__init__.py | cut -d '"' -f 2)
+          DESC=$(grep "__description__" stratos/__init__.py | cut -d '"' -f 2)
+          URL=$(grep "__url__" stratos/__init__.py | cut -d '"' -f 2)
+          AUTHOR=$(grep "__author__" stratos/__init__.py | cut -d '"' -f 2)
+          EMAIL=$(grep "__author_email__" stratos/__init__.py | cut -d '"' -f 2)
+          LICENSE=$(grep "__license__" stratos/__init__.py | cut -d '"' -f 2)
+          REPO_NAME=$(echo "${{ github.repository }}" | cut -d '/' -f 2)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "APP_NAME=$APP_NAME" >> $GITHUB_OUTPUT
+          echo "DESC=$DESC" >> $GITHUB_OUTPUT
+          echo "URL=$URL" >> $GITHUB_OUTPUT
+          echo "AUTHOR=$AUTHOR" >> $GITHUB_OUTPUT
+          echo "EMAIL=$EMAIL" >> $GITHUB_OUTPUT
+          echo "LICENSE=$LICENSE" >> $GITHUB_OUTPUT
+          echo "REPO_NAME=$REPO_NAME" >> $GITHUB_OUTPUT
+
+      - name: Push to AUR
+        run: |
+          # 1. Setup SSH Agent
+          mkdir -p ~/.ssh
+          ssh-keyscan -t ed25519 aur.archlinux.org >> ~/.ssh/known_hosts
+          eval $(ssh-agent -s)
+          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" | tr -d '\r' | ssh-add -
+          
+          # 2. Configure Git
+          git config --global user.name "${{ steps.meta.outputs.AUTHOR }}"
+          git config --global user.email "${{ steps.meta.outputs.EMAIL }}"
+          
+          # 3. Clone the AUR repo
+          git clone ssh://aur@aur.archlinux.org/${{ steps.meta.outputs.APP_NAME }}.git aur_repo
+          cd aur_repo
+          
+          # 4. Generate PKGBUILD
+          cat <<EOF > PKGBUILD
+          # Maintainer: ${{ steps.meta.outputs.AUTHOR }} <${{ steps.meta.outputs.EMAIL }}>
+          pkgname=${{ steps.meta.outputs.APP_NAME }}
+          pkgver=${{ steps.meta.outputs.VERSION }}
+          pkgrel=1
+          pkgdesc="${{ steps.meta.outputs.DESC }}"
+          arch=('any')
+          url="${{ steps.meta.outputs.URL }}"
+          license=('${{ steps.meta.outputs.LICENSE }}')
+          depends=('python>=3.10' 'python-rich' 'python-dotenv' 'python-readchar' 'python-google-generativeai' 'python-duckduckgo-search')
+          makedepends=('python-build' 'python-installer' 'python-wheel' 'python-setuptools')
+          source=("${{ steps.meta.outputs.URL }}/archive/refs/tags/v\${pkgver}.tar.gz")
+          sha256sums=('SKIP')
+
+          build() {
+              cd "stratos-cli-\${pkgver}"
+              python -m build --wheel --no-isolation
+          }
+
+          package() {
+              cd "stratos-cli-\${pkgver}"
+              python -m installer --destdir="\${pkgdir}" dist/*.whl
+          }
+          EOF
+          
+          # Remove leading spaces from PKGBUILD (needed because of YAML indentation)
+          sed -i 's/^[[:space:]]*//' PKGBUILD
+          
+          # 5. Generate .SRCINFO (Safe captured output method)
+          docker run --rm -v $(pwd)/PKGBUILD:/PKGBUILD archlinux:latest bash -c "
+            pacman -Sy --noconfirm binutils > /dev/null 2>&1 && 
+            useradd -m builder && 
+            cp /PKGBUILD /home/builder/PKGBUILD &&
+            chown builder /home/builder/PKGBUILD &&
+            su builder -c 'cd /home/builder && makepkg --printsrcinfo'
+          " > .SRCINFO
+          
+          # 6. Push
+          git add PKGBUILD .SRCINFO
+          git commit -m "Update to v${{ steps.meta.outputs.VERSION }}" || echo "No changes"
+          git push origin master
+
+  deploy-fedora:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract metadata
+        id: meta
+        run: |
+          VERSION=$(grep "__version__" stratos/__init__.py | cut -d '"' -f 2)
+          APP_NAME=$(grep "__app_name__" stratos/__init__.py | cut -d '"' -f 2)
+          DESC=$(grep "__description__" stratos/__init__.py | cut -d '"' -f 2)
+          URL=$(grep "__url__" stratos/__init__.py | cut -d '"' -f 2)
+          LICENSE=$(grep "__license__" stratos/__init__.py | cut -d '"' -f 2)
+          REPO_NAME=$(echo "${{ github.repository }}" | cut -d '/' -f 2)
+          USERNAME=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "APP_NAME=$APP_NAME" >> $GITHUB_OUTPUT
+          echo "DESC=$DESC" >> $GITHUB_OUTPUT
+          echo "URL=$URL" >> $GITHUB_OUTPUT
+          echo "LICENSE=$LICENSE" >> $GITHUB_OUTPUT
+          echo "REPO_NAME=$REPO_NAME" >> $GITHUB_OUTPUT
+          echo "USERNAME=$USERNAME" >> $GITHUB_OUTPUT
+
+      - name: Build SRPM
+        run: |
+          cat <<'EOF' > stratos.spec
+          Name:           ${{ steps.meta.outputs.APP_NAME }}
+          Version:        ${{ steps.meta.outputs.VERSION }}
+          Release:        1%{?dist}
+          Summary:        ${{ steps.meta.outputs.DESC }}
+          License:        ${{ steps.meta.outputs.LICENSE }}
+          URL:            ${{ steps.meta.outputs.URL }}
+          Source0:        v%{version}.tar.gz
+          BuildArch:      noarch
+          BuildRequires:  python3-devel python3-setuptools
+          %description
+          ${{ steps.meta.outputs.DESC }}
+          %prep
+          %autosetup -n ${{ steps.meta.outputs.REPO_NAME }}-%{version}
+          %build
+          %py3_build
+          %install
+          %py3_install
+          %files
+          %{_bindir}/stratos
+          %{python3_sitelib}/stratos*
+          %changelog
+          * Sat Feb 22 2025 Automation <github-actions@github.com> - ${{ steps.meta.outputs.VERSION }}-1
+          - Automated build
+          EOF
+          sed -i 's/^[[:space:]]*//' stratos.spec
+          curl -L -o v${{ steps.meta.outputs.VERSION }}.tar.gz ${{ steps.meta.outputs.URL }}/archive/refs/tags/v${{ steps.meta.outputs.VERSION }}.tar.gz
+          docker run --rm -v $(pwd):/data fedora:latest bash -c "dnf install -y rpm-build > /dev/null 2>&1 && cd /data && rpmbuild -bs stratos.spec --define '_srcrpmdir /data' --define '_sourcedir /data'"
+
+      - name: Install COPR CLI
+        run: pip install copr-cli
+
+      - name: Trigger COPR Build
+        run: |
+          mkdir -p ~/.config
+          echo "${{ secrets.COPR_API_TOKEN }}" > ~/.config/copr
+          copr-cli build ${{ steps.meta.outputs.USERNAME }}/stratos-cli *.src.rpm
