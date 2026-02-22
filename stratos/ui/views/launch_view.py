@@ -94,7 +94,7 @@ def render_launch_dashboard(state):
     else:
         right_content = get_status_content(palette, state.config)
         right_title = " SYSTEM STATUS "
-        right_footer = " STRATOS CORE v2.5 "
+        right_footer = f" STRATOS CORE v{__version__} "
         
     layout["main"].split_row(
         Layout(make_gradient_panel(menu_text, title=" NAVIGATION ", footer=nav_footer, palette=palette), ratio=2),
