@@ -1,40 +1,153 @@
 {
-    "stratos_dark": {"p1": "#007cf0", "p2": "#ff0080", "mode": "dark", "pygments": "shades-of-purple"},
-    "stratos_light": {"p1": "#007cf0", "p2": "#ff0080", "mode": "light", "pygments": "shades-of-purple"},
+    "stratos_dark": {
+        "p1": "#007cf0", 
+        "p2": "#ff0080", 
+        "mode": "dark", 
+        "pygments": "material"
+    },
+    "stratos_light": {
+        "p1": "#0070f3", 
+        "p2": "#f81ce5", 
+        "mode": "light", 
+        "pygments": "default"
+    },
 
-    "ansi_dark": {"p1": "#00ffff", "p2": "#00ff00", "mode": "dark", "pygments": "ansi_dark"},
-    "ansi_light": {"p1": "#0000ff", "p2": "#00ff00", "mode": "light", "pygments": "ansi_light"},
-    
-    "one_dark": {"p1": "#61aeee", "p2": "#98c379", "mode": "dark", "pygments": "one-dark"},
-    "one_light": {"p1": "#4078f2", "p2": "#a626a4", "mode": "light", "pygments": "one-light"},
-    
-    "ayu_dark": {"p1": "#FFB454", "p2": "#F26D78", "mode": "dark", "pygments": "ayu-dark"},
-    "ayu_light": {"p1": "#399ee6", "p2": "#86b300", "mode": "light", "pygments": "ayu-light"},
-    
-    "dracula_dark": {"p1": "#ff79c6", "p2": "#8be9fd", "mode": "dark", "pygments": "dracula"},
-    "dracula_light": {"p1": "#6272a4", "p2": "#af5f00", "mode": "light", "pygments": "dracula"},
-    
-    "github_dark": {"p1": "#79B8FF", "p2": "#85E89D", "mode": "dark", "pygments": "github-dark"},
-    "github_light": {"p1": "#445588", "p2": "#008080", "mode": "light", "pygments": "github-light"},
-    
-    "nord_dark": {"p1": "#88c0d0", "p2": "#b48ead", "mode": "dark", "pygments": "nord"},
-    "nord_light": {"p1": "#5e81ac", "p2": "#b48ead", "mode": "light", "pygments": "nord"},
-    
-    "gruvbox_dark": {"p1": "#fabd2f", "p2": "#fe8019", "mode": "dark", "pygments": "gruvbox-dark"},
-    "gruvbox_light": {"p1": "#af8700", "p2": "#d65d0e", "mode": "light", "pygments": "gruvbox-light"},
-    
-    "catppuccin_dark": {"p1": "#cba6f7", "p2": "#89b4fa", "mode": "dark", "pygments": "monokai"},
-    "catppuccin_light": {"p1": "#8839ef", "p2": "#1e66f5", "mode": "light", "pygments": "friendly"},
+    "dracula_dark": {
+        "p1": "#BD93F9", 
+        "p2": "#FF79C6", 
+        "mode": "dark", 
+        "pygments": "dracula"
+    },
+    "dracula_light": {
+        "p1": "#6272a4", 
+        "p2": "#ff79c6", 
+        "mode": "light", 
+        "pygments": "tango"
+    },
 
-    "solarized_dark": {"p1": "#268bd2", "p2": "#2aa198", "mode": "dark", "pygments": "solarized-dark"},
-    "solarized_light": {"p1": "#268bd2", "p2": "#2aa198", "mode": "light", "pygments": "solarized-light"},
+    "nord_dark": {
+        "p1": "#88C0D0", 
+        "p2": "#B48EAD", 
+        "mode": "dark", 
+        "pygments": "nord"
+    },
+    "nord_light": {
+        "p1": "#5E81AC", 
+        "p2": "#BF616A", 
+        "mode": "light", 
+        "pygments": "manni"
+    },
 
-    "shades_of_purple_dark": {"p1": "#4d21fc", "p2": "#ff628c", "mode": "dark", "pygments": "shades-of-purple"},
-    "shades_of_purple_light": {"p1": "#4d21fc", "p2": "#ff628c", "mode": "light", "pygments": "shades-of-purple"},
-    
-    "xcode_dark": {"p1": "#1c00cf", "p2": "#007400", "mode": "dark", "pygments": "xcode"},
-    "xcode_light": {"p1": "#1c00cf", "p2": "#007400", "mode": "light", "pygments": "xcode"},
+    "gruvbox_dark": {
+        "p1": "#FABD2F", 
+        "p2": "#FE8019", 
+        "mode": "dark", 
+        "pygments": "gruvbox-dark"
+    },
+    "gruvbox_light": {
+        "p1": "#AF3A03", 
+        "p2": "#B57614", 
+        "mode": "light", 
+        "pygments": "gruvbox-light"
+    },
 
-    "googlecode_dark": {"p1": "#006666", "p2": "#660066", "mode": "dark", "pygments": "friendly"},
-    "googlecode_light": {"p1": "#006666", "p2": "#660066", "mode": "light", "pygments": "friendly"}
+    "catppuccin_dark": {
+        "p1": "#CBA6F7", 
+        "p2": "#F38BA8", 
+        "mode": "dark", 
+        "pygments": "monokai"
+    },
+    "catppuccin_light": {
+        "p1": "#8839EF", 
+        "p2": "#D20F39", 
+        "mode": "light", 
+        "pygments": "friendly"
+    },
+
+    "solarized_dark": {
+        "p1": "#268BD2", 
+        "p2": "#D33682", 
+        "mode": "dark", 
+        "pygments": "solarized-dark"
+    },
+    "solarized_light": {
+        "p1": "#268BD2", 
+        "p2": "#DC322F", 
+        "mode": "light", 
+        "pygments": "solarized-light"
+    },
+
+    "monokai_dark": {
+        "p1": "#A6E22E", 
+        "p2": "#F92672", 
+        "mode": "dark", 
+        "pygments": "monokai"
+    },
+
+    "github_dark": {
+        "p1": "#58A6FF", 
+        "p2": "#3FB950", 
+        "mode": "dark", 
+        "pygments": "github-dark"
+    },
+    "github_light": {
+        "p1": "#0969DA", 
+        "p2": "#1A7F37", 
+        "mode": "light", 
+        "pygments": "github-light"
+    },
+
+    "tokyo_night_dark": {
+        "p1": "#7AA2F7", 
+        "p2": "#BB9AF7", 
+        "mode": "dark", 
+        "pygments": "one-dark"
+    },
+
+    "one_dark": {
+        "p1": "#61AFEF", 
+        "p2": "#C678DD", 
+        "mode": "dark", 
+        "pygments": "one-dark"
+    },
+    "one_light": {
+        "p1": "#0184BC", 
+        "p2": "#A626A4", 
+        "mode": "light", 
+        "pygments": "one-light"
+    },
+
+    "purple_dark": {
+        "p1": "#4d21fc", 
+        "p2": "#ff628c", 
+        "mode": "dark", 
+        "pygments": "shades-of-purple"
+    },
+    "purple_light": {
+        "p1": "#4d21fc", 
+        "p2": "#ff628c", 
+        "mode": "light", 
+        "pygments": "shades-of-purple"
+    },
+
+    "xcode_light": {
+        "p1": "#1c00cf", 
+        "p2": "#007400", 
+        "mode": "light", 
+        "pygments": "xcode"
+    },
+
+    "matrix_dark": {
+        "p1": "#00FF00", 
+        "p2": "#008F11", 
+        "mode": "dark", 
+        "pygments": "vim"
+    },
+
+    "cyberpunk_dark": {
+        "p1": "#FF00FF", 
+        "p2": "#00FFFF", 
+        "mode": "dark", 
+        "pygments": "fruity"
+    }
 }

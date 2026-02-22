@@ -56,11 +56,16 @@ def get_theme_preview_content(theme_id, palette):
     preview_table.add_row(code_preview)
     return preview_table
 
-def render_launch_dashboard(state):
+def render_launch_dashboard(state, options=None):
     current_theme_id = state.config.get("theme", "one_dark")
     palette = get_palette(current_theme_id)
     styles = get_styles(palette)
     menu_data = MENUS[state.menu_state]
+    
+    # Use provided options or fallback to default
+    if options is None:
+        options = menu_data["options"]
+        
     layout = Layout()
     
     layout.split_column(
@@ -72,12 +77,15 @@ def render_launch_dashboard(state):
     )
     
     toggles = ["THOUGHTS", "DEBUG", "DISPLAY_MODE", "SHOW_RESULTS"]
-    opt = menu_data["options"][state.selected_index]
+    # Ensure selected_index is within bounds
+    sel_idx = min(state.selected_index, len(options) - 1)
+    opt = options[sel_idx]
+    
     nav_footer = " [SPACE] TOGGLE " if opt["id"] in toggles else " [ENTER/ESC] BACK " if "BACK" in opt["id"] else " [ENTER] SELECT "
     menu_text = Text("\n")
     
-    for i, opt_in in enumerate(menu_data["options"]):
-        if i == state.selected_index:
+    for i, opt_in in enumerate(options):
+        if i == sel_idx:
             menu_text.append(f" • ", style=f"bold {styles['accent']}")
             menu_text.append(f"{opt_in['label']:<18} ", style=styles["base"])
             menu_text.append(f" {opt_in['desc']}\n", style=f"bold {styles['accent']}")
@@ -86,7 +94,7 @@ def render_launch_dashboard(state):
             menu_text.append(f" {opt_in['desc']}\n", style=styles["dim"])
             
     if state.menu_state in ["THEME_SELECT", "THEME_MODE"]:
-        hovered_opt = menu_data["options"][state.selected_index]
+        hovered_opt = options[sel_idx]
         p_id, p_pal = (state.original_theme, get_palette(state.original_theme)) if "BACK" in hovered_opt["id"] else (current_theme_id, palette)
         right_content = get_theme_preview_content(p_id, p_pal)
         right_title = " THEME PREVIEW "

@@ -60,18 +60,33 @@ class StratosDashboard:
         save_config(self.state.config)
         return True
 
+    def get_filtered_options(self):
+        options = MENUS[self.state.menu_state]["options"]
+        if self.state.menu_state == "THEME_SELECT":
+            current_theme = self.state.config.get("theme", "one_dark")
+            is_dark = current_theme.endswith("_dark")
+            # Filter out 'xcode' if we are in dark mode (it only has a light version)
+            if is_dark:
+                return [opt for opt in options if opt["id"] != "xcode"]
+        return options
+
     def run(self):
         toggles = ["THOUGHTS", "DEBUG", "DISPLAY_MODE", "SHOW_RESULTS"]
         while True:
-            with Live(render_launch_dashboard(self.state), refresh_per_second=10, screen=True) as live:
+            options = self.get_filtered_options()
+            # Boundary check for selected_index after filtering
+            self.state.selected_index = min(self.state.selected_index, len(options) - 1)
+            
+            with Live(render_launch_dashboard(self.state, options), refresh_per_second=10, screen=True) as live:
                 while True:
                     try: key = readchar.readkey()
                     except KeyboardInterrupt: sys.exit(0)
-                    options = MENUS[self.state.menu_state]["options"]
+                    
                     if key == "\x1b" or key == readchar.key.ESC:
                         back_opt = next((o for o in options if "BACK" in o["id"]), None)
                         if back_opt: self.handle_action(back_opt["id"]); break
                         continue
+                    
                     if key == readchar.key.UP: self.state.selected_index = (self.state.selected_index - 1) % len(options)
                     elif key == readchar.key.DOWN: self.state.selected_index = (self.state.selected_index + 1) % len(options)
                     elif key == readchar.key.ENTER:
@@ -152,7 +167,7 @@ class StratosDashboard:
                         break 
                     elif key == " ":
                         opt = options[self.state.selected_index]
-                        if opt["id"] in toggles: self.handle_action(opt["id"]); live.update(render_launch_dashboard(self.state))
+                        if opt["id"] in toggles: self.handle_action(opt["id"]); live.update(render_launch_dashboard(self.state, options))
                     
                     if self.state.menu_state == "THEME_SELECT":
                         h_id = options[self.state.selected_index]["id"]
@@ -165,4 +180,4 @@ class StratosDashboard:
                             t_m = "dark" if h_id == "MODE_DARK" else "light"
                             c_p = self.state.config.get("theme", "one_dark").rsplit("_", 1)[0]
                             self.state.config["theme"] = f"{c_p}_{t_m}"
-                    live.update(render_launch_dashboard(self.state))
+                    live.update(render_launch_dashboard(self.state, options))
