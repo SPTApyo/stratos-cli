@@ -167,6 +167,7 @@ class AIPool:
 
     def _execute_agent_action(self, agent, task):
         self.logger.agent_takeover(agent.name, agent.role)
+        self.logger.wait_if_paused() # CHECK BEFORE STARTING ACTION
         if not self.blackboard.last_snapshot:
             self.blackboard.last_snapshot = self.sandbox.get_snapshot()
         current_state = self.sandbox.get_snapshot()
@@ -178,20 +179,15 @@ class AIPool:
         self.blackboard.last_snapshot = self.sandbox.get_snapshot()
         return result
 
-    def _check_pause(self):
-        """Internal check to handle user interjection if pause was requested."""
-        if self.logger.pause_requested:
-            self.logger.paused = True
-            self.logger.pause_requested = False
-            # We use ask_user to get the user's interjection
-            self.logger.start_prompt("SYSTEM", "MISSION PAUSED. Enter additional instructions or press Enter to resume")
-            order = self.sandbox.ask_user("MISSION PAUSED. Enter additional instructions or press Enter to resume")
-            self.logger.stop_prompt()
-            if order.strip():
-                self.blackboard.post_discussion("HUMAN", f"INTERJECTION: {order}")
-                # We update the master plan or todo with the new order
-                self.blackboard.post("USER_ORDER", order)
-            self.logger.paused = False
+    def _handle_interjection(self):
+        """Internal check to handle user interjection if an instruction was provided."""
+        # The engine signal_handler now handles the prompt logic. 
+        # We just check if there's text left in the input buffer from an 'instruct' choice.
+        if hasattr(self.logger, 'prompt_input') and self.logger.prompt_input.strip():
+            order = self.logger.prompt_input.strip()
+            self.blackboard.post_discussion("HUMAN", f"INTERJECTION: {order}")
+            self.blackboard.post("USER_ORDER", order)
+            self.logger.prompt_input = "" # Clear buffer
 
     def broadcast_task(self, task):
         self.logger.section("HIERARCHICAL_TEAM_WORKFLOW")
@@ -218,24 +214,24 @@ class AIPool:
             )
             strategy = self._execute_agent_action(self.agents["MANAGER"], pm_instruction)
             self.blackboard.post("MASTER_PLAN", strategy)
-            self._check_pause()
+            self._handle_interjection()
 
             # 2. Architect Design
             plan = self._execute_agent_action(self.agents["ARCHITECT"], "DESIGN_STRATEGY: Follow PM's roadmap. Define files and logic.")
             self.blackboard.post("DETAILED_SPECS", plan)
-            self._check_pause()
+            self._handle_interjection()
 
             # 3. Execution
             for name, specialist in list(self.specialists.items()):
                 self._execute_agent_action(specialist, f"EXPERT_CONTRIBUTION: {name}. Consult TODO_LIST.")
-                self._check_pause()
+                self._handle_interjection()
 
             self._execute_agent_action(self.agents["CODER"], "IMPLEMENTATION: Execute current pending tasks in TODO_LIST.")
-            self._check_pause()
+            self._handle_interjection()
             
             # 4. Verification
             self._execute_agent_action(self.agents["REVIEWER"], "QA_AND_TEST_RUN: Verify everything works.")
-            self._check_pause()
+            self._handle_interjection()
             
             vote = self._execute_agent_action(self.agents["REVIEWER"], "FINAL_STATUS_CHECK")
             

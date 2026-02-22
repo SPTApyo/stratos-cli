@@ -87,6 +87,11 @@ class AIAgent:
             if allowed: return self.sandbox.install_dependencies()
             else: return "USER_DENIED: Installation cancelled."
 
+        def report_status_wrapper(message):
+            """Logs a status update to the mission dashboard."""
+            self.logger.info(message)
+            return "SUCCESS: Status logged."
+
         self.tool_map = {
             "write_file": self.sandbox.write_file,
             "read_file": self.sandbox.read_file,
@@ -102,7 +107,8 @@ class AIAgent:
             "git_init": git_init_wrapper,
             "git_commit": self.sandbox.git_commit,
             "install_dependencies": install_deps_wrapper,
-            "update_todo_list": self.sandbox.update_todo_list
+            "update_todo_list": self.sandbox.update_todo_list,
+            "report_status": report_status_wrapper
         }
         
         if self.pool_callback:
@@ -130,6 +136,7 @@ class AIAgent:
             "request_confirmation": {"type": "OBJECT", "properties": {"action": {"type": "STRING"}}, "required": ["action"]},
             "git_commit": {"type": "OBJECT", "properties": {"message": {"type": "STRING"}}, "required": ["message"]},
             "update_todo_list": {"type": "OBJECT", "properties": {"todo_content": {"type": "STRING"}}, "required": ["todo_content"]},
+            "report_status": {"type": "OBJECT", "properties": {"message": {"type": "STRING"}}, "required": ["message"]},
             "request_specialist": {"type": "OBJECT", "properties": {"role_name": {"type": "STRING"}, "role_description": {"type": "STRING"}, "weight": {"type": "STRING", "enum": ["HEAVY", "MEDIUM", "LIGHT"]}}, "required": ["role_name", "role_description"]}
         }
         return schemas.get(name, {"type": "OBJECT", "properties": {}})
@@ -148,9 +155,10 @@ class AIAgent:
             "1. NO SUBDIRECTORIES FOR PROJECT: DO NOT create a new folder named after the project. You are already in the project folder. Create files directly in the current root or appropriate subfolders (src, data, etc.).\n"
             "2. FULL FUNCTIONALITY: The deliverable must be fully functional. No placeholders, no 'insert code here'. The app must run immediately after installation.\n"
             "3. BASH_COMMANDS: Every 'execute_command' call WILL REQUIRE human approval. No exceptions. Chain commands with '&&' sparingly; prefer sequential calls for better error handling.\n"
-            "4. FILE EDITS: When using 'smart_replace', ensure unique context. Prefer 'write_file' for creating new files. Read a file before editing it to ensure you have the correct context.\n"
-            "5. FILE SEARCHING: Use 'glob_search' to find files by pattern (e.g., '**/*.py') and 'grep_search' to find code content. Use 'get_structure_tree' to understand project layout.\n"
-            "6. DEPENDENCIES: Use 'install_dependencies' to install packages from requirements.txt. Use 'web_fetch' to retrieve external documentation if needed. Use 'search_web' to find documentation or solutions to errors.\n\n"
+            "4. NO ECHO COMMANDS: DO NOT use `execute_command('echo ...')` to log progress. Use the dedicated tool `report_status('message')` instead. This prevents unnecessary security prompts.\n"
+            "5. FILE EDITS: When using 'smart_replace', ensure unique context. Prefer 'write_file' for creating new files. Read a file before editing it to ensure you have the correct context.\n"
+            "6. FILE SEARCHING: Use 'glob_search' to find files by pattern (e.g., '**/*.py') and 'grep_search' to find code content. Use 'get_structure_tree' to understand project layout.\n"
+            "7. DEPENDENCIES: Use 'install_dependencies' to install packages from requirements.txt. Use 'web_fetch' to retrieve external documentation if needed. Use 'search_web' to find documentation or solutions to errors.\n\n"
             "TEAM_STUCTURE & SYNC:\n"
             "1. FOLLOW_THE_LEADER: Follow the PROJECT_MANAGER roadmap and the TODO_LIST.\n"
             "2. UPDATE_TODO: Use 'update_todo_list' when progress is made.\n\n"
@@ -170,11 +178,13 @@ class AIAgent:
         
         turns = 0
         while turns < 25:
+            self.logger.wait_if_paused() # CHECK BEFORE EACH TURN
             turns += 1
             full_response = None
             retry_count = 0
             while retry_count < 3:
                 try:
+                    self.logger.wait_if_paused() # CHECK BEFORE API CALL
                     stream = self.client.models.generate_content_stream(model=self.model_id, contents=messages, config=types.GenerateContentConfig(tools=[types.Tool(function_declarations=self.tools)]))
                     full_text = ""
                     accumulated_parts = []

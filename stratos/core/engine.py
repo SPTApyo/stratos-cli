@@ -27,11 +27,11 @@ def run_stratos(project_name=None, project_desc=None):
             if not api_key:
                 console.print("[bold red]ERROR: API Key is required to proceed.[/bold red]")
                 return
-            # Optional: Save to .env for future use
+            # Optional: Save to global config for future use
             try:
-                with open(".env", "a") as f:
-                    f.write(f"\nGEMINI_API_KEY={api_key}\n")
-                console.print("[dim]API Key saved to .env file[/dim]")
+                from stratos.utils.config import save_env_var
+                save_env_var("GEMINI_API_KEY", api_key)
+                console.print("[dim]API Key saved to global config[/dim]")
             except Exception:
                 pass
 
@@ -85,7 +85,11 @@ def run_stratos(project_name=None, project_desc=None):
                 )
                 if response.text:
                     expanded_desc = response.text.strip()
-                    console.print(f"\n[bold green]SPECIFICATION EXPANDED:[/bold green]\n{expanded_desc}\n")
+                    if config.get("display_mode") == "dashboard":
+                        console.print(f"\n[bold green]SPECIFICATION EXPANDED:[/bold green]\n{expanded_desc}\n")
+                    else:
+                        logger.log("SYSTEM", "Specification Expanded", style="success")
+                        logger.debug(f"FULL_SPEC: {expanded_desc}")
                     logger.log("SYSTEM", f"Original Request: {project_desc}", style="info")
                     project_desc = expanded_desc
         except Exception as e:
@@ -143,8 +147,10 @@ def run_stratos(project_name=None, project_desc=None):
             os._exit(0)
         last_interrupt = now
         
+        # ACTUALLY PAUSE THE AGENTS IMMEDIATELY
+        logger.paused = True
+        
         # Save current prompt state if any
-
         old_prompt = getattr(logger, 'active_prompt', None)
         old_options = getattr(logger, 'prompt_options', None)
         old_mode = getattr(logger, 'prompt_mode', 'text')
@@ -157,18 +163,21 @@ def run_stratos(project_name=None, project_desc=None):
                 restore_terminal_echo()
                 os._exit(0)
             elif choice == "instruct":
-                logger.pause_requested = True
-                if old_prompt:
-                    logger.active_prompt = old_prompt
-                    logger.prompt_options = old_options
-                    logger.prompt_mode = old_mode
-                    logger.prompt_ready = old_ready
-                    logger.prompt_callback = old_callback
+                if getattr(logger, 'agent_is_waiting', False):
+                    # IA already blocked, switch to text mode immediately
+                    logger.prompt_mode = 'text'
+                    logger.active_prompt["question"] = "PAUSED: Enter your instruction below:"
                     logger.prompt_input = ""
                     logger.prompt_selection = 0
+                    logger.prompt_cursor_index = 0
                 else:
-                    logger.stop_prompt()
-            else:
+                    # Still working, flag for automatic switch when it hits wait_if_paused
+                    logger.instruction_mode_requested = True
+                    logger.prompt_input = ""
+                    logger.prompt_cursor_index = 0
+                    logger.active_prompt["question"] = "WAITING: Switching to instruction mode once paused..."
+            else: # choice == "resume"
+                logger.paused = False
                 if old_prompt:
                     # Restore old prompt
                     logger.active_prompt = old_prompt
@@ -186,7 +195,8 @@ def run_stratos(project_name=None, project_desc=None):
             {"label": "Add Instruction", "value": "instruct"},
             {"label": "Exit Stratos", "value": "exit"}
         ]
-        logger.start_prompt("SYSTEM", "INTERRUPT: Pausing mission. Choose an action:", options=options, callback=handle_interrupt)
+        # Start with 'requesting' message. logger.wait_if_paused will update it to 'PAUSED' when safe.
+        logger.start_prompt("SYSTEM", "INTERRUPT: Requesting mission pause...", options=options, callback=handle_interrupt)
 
     signal.signal(signal.SIGINT, signal_handler)
 

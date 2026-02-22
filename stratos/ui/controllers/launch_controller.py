@@ -105,18 +105,26 @@ class StratosDashboard:
                                         self.console.print("[bold red]ERROR: API Key is required to proceed.[/bold red]")
                                         sys.exit(1)
                                     try:
-                                        with open(".env", "a") as f:
-                                            f.write(f"\nGEMINI_API_KEY={api_key}\n")
-                                        self.console.print("[dim]API Key saved to .env file[/dim]")
+                                        from stratos.utils.config import save_env_var
+                                        save_env_var("GEMINI_API_KEY", api_key)
+                                        self.console.print("[dim]API Key saved to global config[/dim]")
                                         from dotenv import load_dotenv; load_dotenv()
                                     except Exception: pass
 
                             palette = get_palette(self.state.config.get("theme", "one_dark"))
                             styles = get_styles(palette)
-                            init_content = Text("\n Specify project details to begin development mission.\n Use '*' for quick MVP testing.\n", style=styles["dim"])
-                            self.console.print(get_banner(palette))
-                            self.console.print(make_gradient_panel(init_content, title=" MISSION INITIALIZATION ", palette=palette, expand=False))
-                            p_name = Prompt.ask(f"\n [bold {styles['accent']}]› PROJECT_NAME[/]")
+                            display_mode = self.state.config.get("display_mode", "dashboard")
+
+                            if display_mode == "dashboard":
+                                init_content = Text("\n Specify project details to begin development mission.\n Use '*' for quick MVP testing.\n", style=styles["dim"])
+                                self.console.print(get_banner(palette))
+                                self.console.print(make_gradient_panel(init_content, title=" MISSION INITIALIZATION ", palette=palette, expand=False))
+                                p_name = Prompt.ask(f"\n [bold {styles['accent']}]› PROJECT_NAME[/]")
+                            else:
+                                self.console.print(f"\n[bold {styles['accent']}]› MISSION INITIALIZATION[/]")
+                                self.console.print(f"[dim]Use '*' for quick MVP testing[/dim]\n")
+                                p_name = Prompt.ask(f"[bold {styles['accent']}]› PROJECT_NAME[/]")
+
                             p_desc = "MVP_TEST: Create a simple HTML/JS clock." if p_name == "*" else Prompt.ask(f" [bold {styles['accent']}]› DESCRIPTION[/]")
                             run_stratos(p_name, p_desc); break
                         
@@ -149,12 +157,13 @@ class StratosDashboard:
                             live.stop(); self.console.clear()
                             palette = get_palette(self.state.config.get("theme", "one_dark"))
                             styles = get_styles(palette)
-                            setup_content = Text("\n Updating Gemini access credentials.\n Your key will be securely saved in the local .env file.\n", style=styles["dim"])
+                            setup_content = Text("\n Updating Gemini access credentials.\n Your key will be securely saved in the global config directory.\n", style=styles["dim"])
                             self.console.print(get_banner(palette))
                             self.console.print(make_gradient_panel(setup_content, title=" IDENTITY SETUP ", palette=palette, expand=False))
                             key = Prompt.ask(f"\n [bold {styles['accent']}]› ENTER GEMINI_API_KEY[/]")
                             if key:
-                                with open(".env", "w") as f: f.write(f"GEMINI_API_KEY={key}\n")
+                                from stratos.utils.config import save_env_var
+                                save_env_var("GEMINI_API_KEY", key)
                                 self.state.last_error = ""
                             if self.handle_action(opt["id"]):
                                 self.state.menu_state = "SETTINGS"; self.state.selected_index = 4

@@ -181,33 +181,24 @@ class Sandbox:
             return True, "Auto-approved by user mode."
 
         if self.logger_instance and hasattr(self.logger_instance, 'prompt_ready'):
-            self.logger_instance.prompt_ready.wait()
-            answer = self.logger_instance.prompt_input.strip()
-            
-            if answer.lower() == 'y':
-                return True, command
-            elif answer.lower() == 'n':
-                return False, "User denied."
-            else:
-                if not answer:
-                    return False, "User denied (empty order)."
-                # Anything else is treated as a specific order/message
-                return False, answer
+            sid = self.logger_instance.active_prompt.get('sid')
+            while True:
+                self.logger_instance.prompt_ready.wait()
+                # Verify that the validated prompt matches this session
+                current_prompt = self.logger_instance.active_prompt
+                if current_prompt and current_prompt.get('sid') == sid:
+                    answer = self.logger_instance.prompt_input.strip()
+                    if answer.lower() == 'y': return True, command
+                    elif answer.lower() == 'n': return False, "User denied."
+                    else:
+                        if not answer: return False, "User denied (empty order)."
+                        return False, answer
+                else:
+                    # Higher priority prompt was validated, we must wait again
+                    self.logger_instance.prompt_ready.clear()
                 
-        # Fallback if logger is not properly configured
-        if self.ui_active_event: self.ui_active_event.clear()
-        if self.live_instance: self.live_instance.stop()
-        if self.logger_instance: self.logger_instance.print_current_frame()
-        choice = Prompt.ask("\n[bold yellow]› ACTION[/] ([white]y[/]:yes, [white]n[/]:no, [white]o[/]:order)", choices=["y", "n", "o"], default="y", show_choices=False)
-        allowed = False
-        final_cmd = command
-        if choice == "y": allowed = True
-        elif choice == "o":
-            final_cmd = Prompt.ask("[bold cyan]› SPECIFIC ORDER[/]")
-            allowed = False 
-        if self.live_instance: self.live_instance.start()
-        if self.ui_active_event: self.ui_active_event.set()
-        return allowed, final_cmd
+        # Fallback
+        return False, "User denied (No UI available)."
 
     def web_fetch(self, url: str) -> str:
         """Fetches the content of a URL (HTML/Text)."""
@@ -256,36 +247,33 @@ class Sandbox:
 
     def ask_user(self, question: str) -> str:
         """Asks the human user a question and returns the answer."""
-        # We don't stop Live. We just wait for the engine to fill prompt_input
         if self.logger_instance and hasattr(self.logger_instance, 'prompt_ready'):
-            self.logger_instance.prompt_ready.wait()
-            answer = self.logger_instance.prompt_input
-            return answer
+            sid = self.logger_instance.active_prompt.get('sid')
+            while True:
+                self.logger_instance.prompt_ready.wait()
+                current_prompt = self.logger_instance.active_prompt
+                if current_prompt and current_prompt.get('sid') == sid:
+                    return self.logger_instance.prompt_input
+                else:
+                    self.logger_instance.prompt_ready.clear()
         
-        # Fallback if logger is not properly configured
-        if self.ui_active_event: self.ui_active_event.clear()
-        if self.live_instance: self.live_instance.stop()
-        if self.logger_instance: self.logger_instance.print_current_frame()
-        answer = Prompt.ask("\n[bold yellow]› YOUR ANSWER[/]")
-        if self.live_instance: self.live_instance.start()
-        if self.ui_active_event: self.ui_active_event.set()
-        return answer
+        # Fallback
+        return ""
 
     def request_confirmation(self, action: str) -> bool:
         """Requests a Yes/No confirmation from the user."""
         if self.logger_instance and hasattr(self.logger_instance, 'prompt_ready'):
-            self.logger_instance.prompt_ready.wait()
-            answer = self.logger_instance.prompt_input.strip().lower()
-            return answer == 'y'
+            sid = self.logger_instance.active_prompt.get('sid')
+            while True:
+                self.logger_instance.prompt_ready.wait()
+                current_prompt = self.logger_instance.active_prompt
+                if current_prompt and current_prompt.get('sid') == sid:
+                    return self.logger_instance.prompt_input.strip().lower() == 'y'
+                else:
+                    self.logger_instance.prompt_ready.clear()
             
-        # Fallback if logger is not properly configured
-        if self.ui_active_event: self.ui_active_event.clear()
-        if self.live_instance: self.live_instance.stop()
-        if self.logger_instance: self.logger_instance.print_current_frame()
-        res = Confirm.ask(f"\n[bold yellow]› ALLOW ACTION?[/]")
-        if self.live_instance: self.live_instance.start()
-        if self.ui_active_event: self.ui_active_event.set()
-        return res
+        # Fallback
+        return False
 
     # --- GIT ---
 
