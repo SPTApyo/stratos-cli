@@ -13,7 +13,13 @@ def render_execution_dashboard(logger_state, styles, palette_raw, term_height):
     header = Text(f" MISSION: {logger_state.project_path}", style=styles["base"])
     if getattr(logger_state, 'sandbox', None) and getattr(logger_state.sandbox, 'auto_approve', False):
         header.append("  |  AUTO_MODE", style="bold blink green")
-    if logger_state.paused: header.append("  |  SYSTEM_PAUSED", style="bold blink red")
+    
+    if logger_state.paused:
+        if getattr(logger_state, 'agent_is_waiting', False):
+            header.append("  |  SYSTEM_PAUSED", style="bold blink red")
+        else:
+            header.append("  |  PAUSE_PENDING", style="bold yellow")
+            
     header.append(f"  |  ITERATION: ", style=styles["dim"]); header.append(f"{logger_state.current_cycle}", style="bold " + styles["accent"])
     header.append(f"  |  PROCESSOR: ", style=styles["dim"]); header.append(f"{logger_state.current_agent}", style="bold " + styles["accent"])
     

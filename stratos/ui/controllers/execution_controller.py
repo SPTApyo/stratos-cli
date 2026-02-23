@@ -16,11 +16,19 @@ class ExecutionController:
         self.palette = palette
 
     def run(self):
-        self.logger.console.clear()
+        display_mode = getattr(self.logger, 'display_mode', 'dashboard')
         
+        if display_mode == "dashboard":
+            self.logger.console.clear()
+            self._run_dashboard()
+        else:
+            self.logger.console.print(f"[bold blue]› STARTING STRATOS IN CONSOLE MODE[/bold blue]")
+            self.logger.console.print(f"[dim]Mission: {self.logger.project_path}[/dim]\n")
+            self._run_console()
+
+    def _run_dashboard(self):
         fd = sys.stdin.fileno()
         old_settings = termios.tcgetattr(fd)
-        
         try:
             # Set terminal to cbreak mode and disable echo
             new_settings = termios.tcgetattr(fd)
@@ -33,52 +41,92 @@ class ExecutionController:
             with Live(get_renderable=get_renderable, refresh_per_second=15, screen=True) as live:
                 self.sandbox.live_instance = live
                 self.logger.live_instance = live
-                
-                while self.mission_thread.is_alive():
-                    if self.ui_active.is_set():
-                        # Read all available keys without blocking
-                        while True:
-                            rlist, _, _ = select.select([sys.stdin], [], [], 0)
-                            if rlist:
-                                keys = os.read(fd, 1024).decode('utf-8', errors='ignore')
-                                i = 0
-                                while i < len(keys):
-                                    # Handle escape sequences
-                                    if keys[i] == '\x1b':
-                                        if i + 3 < len(keys) and keys[i+1] == '[' and keys[i+3] == '~':
-                                            self.handle_key(keys[i:i+4])
-                                            i += 4
-                                        elif i + 2 < len(keys) and keys[i+1] == '[':
-                                            self.handle_key(keys[i:i+3])
-                                            i += 3
-                                        else:
-                                            self.handle_key(keys[i])
-                                            i += 1
-                                    else:
-                                        self.handle_key(keys[i])
-                                        i += 1
-                            else:
-                                break
-                    
-                    time.sleep(0.05) # slightly faster for typing responsiveness
-                
-                time.sleep(1.0)
+                self._input_loop(fd)
         finally:
-            # Restore terminal settings
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+    def _run_console(self):
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            # We still need non-blocking input for prompts
+            new_settings = termios.tcgetattr(fd)
+            new_settings[3] = new_settings[3] & ~(termios.ECHO | termios.ICANON)
+            termios.tcsetattr(fd, termios.TCSADRAIN, new_settings)
+
+            from stratos.ui.components.panels import make_console_interaction
+            
+            while self.mission_thread.is_alive():
+                if self.logger.active_prompt:
+                    # In console mode, we use Live only for the active prompt box
+                    def get_prompt_renderable():
+                        if not self.logger.active_prompt: return ""
+                        return make_console_interaction(
+                            self.logger.active_prompt,
+                            self.logger.prompt_mode,
+                            self.logger.prompt_input,
+                            self.logger.prompt_options,
+                            self.logger.prompt_selection,
+                            self.palette,
+                            self.logger.prompt_cursor_index
+                        )
+                    
+                    with Live(get_renderable=get_prompt_renderable, refresh_per_second=15, screen=False, transient=True) as live:
+                        self.sandbox.live_instance = live
+                        self.logger.live_instance = live
+                        while self.logger.active_prompt and self.mission_thread.is_alive():
+                            self._check_input(fd)
+                            time.sleep(0.05)
+                    self.logger.live_instance = None
+                    time.sleep(0.1)
+                else:
+                    time.sleep(0.1)
+            
+            time.sleep(1.0)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+    def _input_loop(self, fd):
+        while self.mission_thread.is_alive():
+            if self.ui_active.is_set():
+                self._check_input(fd)
+            time.sleep(0.05)
+
+    def _check_input(self, fd):
+        # Read all available keys without blocking
+        while True:
+            rlist, _, _ = select.select([sys.stdin], [], [], 0)
+            if rlist:
+                keys = os.read(fd, 1024).decode('utf-8', errors='ignore')
+                i = 0
+                while i < len(keys):
+                    # Handle escape sequences
+                    if keys[i] == '\x1b':
+                        if i + 3 < len(keys) and keys[i+1] == '[' and keys[i+3] == '~':
+                            self.handle_key(keys[i:i+4])
+                            i += 4
+                        elif i + 2 < len(keys) and keys[i+1] == '[':
+                            self.handle_key(keys[i:i+3])
+                            i += 3
+                        else:
+                            self.handle_key(keys[i])
+                            i += 1
+                    else:
+                        self.handle_key(keys[i])
+                        i += 1
+            else:
+                break
 
     def handle_key(self, key):
         # Global Shortcuts
         if key == '\x01': # Ctrl+A
             self.sandbox.auto_approve = not self.sandbox.auto_approve
-            status = "ENABLED" if self.sandbox.auto_approve else "DISABLED"
-            # Flash a message or reliance on dashboard update
-            if hasattr(self.logger, 'live_instance'):
-                 # Force a refresh or simply let the next frame handle it
-                 pass
             return
 
         if self.logger.active_prompt:
+            if not hasattr(self.logger, 'prompt_cursor_index') or self.logger.prompt_cursor_index is None:
+                self.logger.prompt_cursor_index = len(getattr(self.logger, 'prompt_input', ""))
+            
             prompt_mode = getattr(self.logger, 'prompt_mode', 'text')
 
             if prompt_mode == 'menu':

@@ -23,7 +23,7 @@ def make_gradient_panel(content, title="", footer="", palette=None, padding=(0, 
         panel["bottom"].update(bot_grid)
         return panel
     else:
-        table = Table.grid(expand=True)
+        table = Table.grid(expand=expand)
         table.add_column(width=1); table.add_column(ratio=1); table.add_column(width=1)
         table.add_row(Text("╭", style=f"bold {p1}"), GradientLine("─", p1, p2, title=title, align="left"), Text("╮", style=f"bold {p2}"))
         table.add_row(Text("│", style=f"bold {p1}"), Padding(content, padding), Text("│", style=f"bold {p2}"))
@@ -73,3 +73,31 @@ def make_interaction_box(prompt_data, prompt_mode, prompt_input, prompt_options,
         palette=palette,
         expand=True
     )
+
+def make_console_interaction(prompt_data, prompt_mode, prompt_input, prompt_options, prompt_selection, palette, prompt_cursor_index=None):
+    """Creates a simple, non-boxed interaction display for console mode."""
+    p_content = Text()
+    det = prompt_data.get("details")
+    
+    if det:
+        p_content.append(f"\n › [ACTION REQUIRED] ", style="bold yellow")
+        p_content.append(f"Command: {det['command']}", style="bold white")
+        p_content.append(f" (requested by {prompt_data['agent']})\n", style="dim")
+    else:
+        p_content.append(f"\n › [{prompt_data['agent']}] ", style="bold yellow")
+        p_content.append(f"{prompt_data['question']}\n", style="bold white")
+        
+    if prompt_mode == 'menu':
+        for i, opt in enumerate(prompt_options):
+            cursor = "  ❯ " if i == prompt_selection else "    "
+            style = "bold green" if i == prompt_selection else "dim"
+            p_content.append(f"{cursor}{opt['label']}\n", style=style)
+    else:
+        p_content.append(" › ANSWER: ", style="bold yellow")
+        idx = prompt_cursor_index if prompt_cursor_index is not None else len(prompt_input)
+        idx = max(0, min(idx, len(prompt_input)))
+        p_content.append(prompt_input[:idx], style="bold white")
+        p_content.append(prompt_input[idx:idx+1] or " ", style="bold black on white")
+        p_content.append(prompt_input[idx+1:], style="bold white")
+        
+    return p_content
