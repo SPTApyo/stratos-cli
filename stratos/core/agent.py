@@ -174,7 +174,28 @@ class AIAgent:
 
     def think_and_act(self, task, context=""):
         self.logger.log(self.name, f"TASK: {task[:50]}...", style="agent")
-        messages = [types.Content(role="user", parts=[types.Part(text=f"{self._get_global_prompt()}\n{self._get_personalized_prompt()}\nSTATE:\n{context}\n\nTASK: {task}")])]
+        
+        # --- PROMPT REVIEW PHASE ---
+        global_p = self._get_global_prompt()
+        perso_p = self._get_personalized_prompt()
+        full_prompt = f"{global_p}\n{perso_p}\nSTATE:\n{context}\n\nTASK: {task}"
+        
+        options = [
+            {"label": "Confirm & Send", "value": "y"},
+            {"label": "Edit Prompt", "value": "e", "require_text": True},
+            {"label": "Abort Task", "value": "n"}
+        ]
+        
+        self.logger.start_prompt(self.name, "Reviewing generated system prompt...", details={"prompt_preview": full_prompt}, options=options)
+        res = self.sandbox.ask_user("Reviewing prompt...")
+        self.logger.stop_prompt()
+        
+        if res == "n": return "TASK_ABORTED: User cancelled the task during prompt review."
+        if res and res != "y": # If user provided text (Edit mode)
+            full_prompt = res
+            self.logger.info("System prompt modified by user.")
+
+        messages = [types.Content(role="user", parts=[types.Part(text=full_prompt)])]
         
         turns = 0
         while turns < 25:

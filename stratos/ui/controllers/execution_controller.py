@@ -139,6 +139,9 @@ class ExecutionController:
                     if selected.get('require_text'):
                         self.logger.prompt_mode = 'text'
                         self.logger.prompt_input = ""
+                        self.logger.prompt_cursor_index = 0
+                        if "question" in self.logger.active_prompt:
+                            self.logger.active_prompt["question"] = "EDIT MODE: Provide the final content below"
                     else:
                         self.logger.prompt_input = selected['value']
                         if hasattr(self.logger, 'prompt_ready'):

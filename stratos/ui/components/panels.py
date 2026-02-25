@@ -36,10 +36,17 @@ def make_interaction_box(prompt_data, prompt_mode, prompt_input, prompt_options,
     det = prompt_data.get("details")
     
     if det:
-        p_content.append(f" COMMAND: ", style="bold yellow")
-        p_content.append(f"{det['command']}\n", style="bold white")
-        p_content.append(f" BY:      ", style="bold yellow")
-        p_content.append(f"{prompt_data['agent']}\n", style="bold cyan")
+        if "prompt_preview" in det:
+            p_content.append(f" SYSTEM PROMPT PREVIEW:\n", style="bold yellow")
+            prev = det["prompt_preview"]
+            # Showing middle part for context if too long
+            if len(prev) > 800: prev = prev[:400] + "\n\n[...] [TRUNCATED FOR DISPLAY] [...]\n\n" + prev[-400:]
+            p_content.append(f"{prev}\n", style="italic white")
+        else:
+            p_content.append(f" COMMAND: ", style="bold yellow")
+            p_content.append(f"{det['command']}\n", style="bold white")
+            p_content.append(f" BY:      ", style="bold yellow")
+            p_content.append(f"{prompt_data['agent']}\n", style="bold cyan")
     else:
         p_content.append(f" {prompt_data['agent']} ", style="bold black on yellow")
         p_content.append(f" is asking: {prompt_data['question']}\n", style="bold white")
@@ -71,7 +78,7 @@ def make_interaction_box(prompt_data, prompt_mode, prompt_input, prompt_options,
         title=" INTERACTION REQUIRED ", 
         footer=" WAITING FOR HUMAN ", 
         palette=palette,
-        expand=True
+        expand=False
     )
 
 def make_console_interaction(prompt_data, prompt_mode, prompt_input, prompt_options, prompt_selection, palette, prompt_cursor_index=None):

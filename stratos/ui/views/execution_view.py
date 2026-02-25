@@ -18,7 +18,7 @@ def render_execution_dashboard(logger_state, styles, palette_raw, term_height):
         if getattr(logger_state, 'agent_is_waiting', False):
             header.append("  |  SYSTEM_PAUSED", style="bold blink red")
         else:
-            header.append("  |  PAUSE_PENDING", style="bold yellow")
+            header.append("  |  PAUSE_PENDING", style="bold blink yellow")
             
     header.append(f"  |  ITERATION: ", style=styles["dim"]); header.append(f"{logger_state.current_cycle}", style="bold " + styles["accent"])
     header.append(f"  |  PROCESSOR: ", style=styles["dim"]); header.append(f"{logger_state.current_agent}", style="bold " + styles["accent"])
@@ -40,8 +40,14 @@ def render_execution_dashboard(logger_state, styles, palette_raw, term_height):
     todo = Text()
     if logger_state.todo_list:
         if not logger_state.todo_expanded:
-            active = next((t for t in logger_state.todo_list if t["status"] == "active"), logger_state.todo_list[-1])
-            todo.append(f" {'▶' if active['status']=='active' else '✔'} {active['task']}", style=styles["accent"] if active["status"] == "active" else styles["base"])
+            # Logic: Find 'active', or first that is NOT 'done', fallback to last
+            active = next((t for t in logger_state.todo_list if t["status"] == "active"), 
+                          next((t for t in logger_state.todo_list if t["status"] != "done"), 
+                               logger_state.todo_list[-1]))
+            
+            icon = "▶" if active["status"] == "active" else "○" if active["status"] == "pending" else "✔"
+            style = styles["accent"] if active["status"] == "active" else styles["dim"] if active["status"] == "pending" else styles["base"]
+            todo.append(f" {icon} {active['task']}", style=style)
         else:
             for t in logger_state.todo_list:
                 icon = "✔" if t["status"]=="done" else "▶" if t["status"]=="active" else "○"
@@ -61,23 +67,31 @@ def render_execution_dashboard(logger_state, styles, palette_raw, term_height):
         prompt_options = getattr(logger_state, 'prompt_options', [])
         is_details = logger_state.active_prompt.get('details') is not None
         
+        # Calculate wrapping lines for question
+        q_text = logger_state.active_prompt.get('question', '')
+        q_lines = (len(q_text) // 100) + 1
+        
         # Base height calculation:
-        # - 3 lines for box borders (approx)
-        # - 2 lines for question text
-        # - 2 lines for generic padding
-        needed_height = 7
+        # - 2 lines for box borders
+        # - q_lines for question text
+        # - 2 lines for generic padding/spacing
+        needed_height = 4 + q_lines
         
         if is_details:
-             needed_height += 4 # Command + Agent lines
+             needed_height += 3 # Command + Agent lines
              
         if prompt_mode == 'menu':
             needed_height += 2 # Header text
             needed_height += len(prompt_options) # One line per option
         else:
-            needed_height += 3 # Input area
+            # Calculate wrapping lines for input
+            input_text = getattr(logger_state, 'prompt_input', '')
+            input_lines = (len(input_text) // 80) + 1
+            needed_height += 1 + input_lines # Label + Input lines
             
-        # Clamp height to reasonable bounds (min 8, max 20)
-        panel_height = min(max(needed_height, 8), 20)
+        # Clamp height to reasonable bounds (min 8, max term_height - 15)
+        max_allowed = max(10, term_height - 15)
+        panel_height = min(max(needed_height, 8), max_allowed)
 
         interaction_panel = make_interaction_box(
             logger_state.active_prompt,

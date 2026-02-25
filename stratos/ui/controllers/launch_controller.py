@@ -70,6 +70,59 @@ class StratosDashboard:
                 return [opt for opt in options if opt["id"] != "xcode"]
         return options
 
+    def custom_prompt(self, label, palette, default="", password=False):
+        styles = get_styles(palette)
+        input_text = default
+        cursor_pos = len(input_text)
+        
+        with Live(auto_refresh=False, screen=False) as live:
+            while True:
+                # Rendering
+                display = Text()
+                display.append(f"\n {label} ", style=f"bold {styles['accent']}")
+                
+                before = input_text[:cursor_pos]
+                at = input_text[cursor_pos] if cursor_pos < len(input_text) else " "
+                after = input_text[cursor_pos+1:] if cursor_pos < len(input_text) else ""
+                
+                if password:
+                    display.append("*" * len(before), style="bold white")
+                    display.append(" " if not input_text and cursor_pos == 0 else "*", style="bold black on white")
+                    display.append("*" * (len(after) if cursor_pos < len(input_text) else 0), style="bold white")
+                else:
+                    display.append(before, style="bold white")
+                    display.append(at, style="bold black on white")
+                    display.append(after, style="bold white")
+                
+                live.update(display)
+                live.refresh()
+                
+                try:
+                    key = readchar.readkey()
+                except KeyboardInterrupt:
+                    sys.exit(0)
+
+                if key == readchar.key.ENTER:
+                    return input_text
+                elif key == readchar.key.LEFT:
+                    cursor_pos = max(0, cursor_pos - 1)
+                elif key == readchar.key.RIGHT:
+                    cursor_pos = min(len(input_text), cursor_pos + 1)
+                elif key == readchar.key.BACKSPACE or key == "\x7f":
+                    if cursor_pos > 0:
+                        input_text = input_text[:cursor_pos-1] + input_text[cursor_pos:]
+                        cursor_pos -= 1
+                elif key == readchar.key.DELETE or key == "\x1b[3~":
+                    if cursor_pos < len(input_text):
+                        input_text = input_text[:cursor_pos] + input_text[cursor_pos+1:]
+                elif key == readchar.key.HOME or key == "\x1b[H":
+                    cursor_pos = 0
+                elif key == readchar.key.END or key == "\x1b[F":
+                    cursor_pos = len(input_text)
+                elif len(key) == 1 and ord(key) >= 32:
+                    input_text = input_text[:cursor_pos] + key + input_text[cursor_pos:]
+                    cursor_pos += 1
+
     def run(self):
         toggles = ["THOUGHTS", "DEBUG", "DISPLAY_MODE", "SHOW_RESULTS"]
         while True:
@@ -94,13 +147,15 @@ class StratosDashboard:
                         if opt["id"] in toggles: continue 
                         if opt["id"] == "LAUNCH":
                             live.stop(); self.console.clear()
+                            palette = get_palette(self.state.config.get("theme", "one_dark"))
+                            styles = get_styles(palette)
                             
                             if not self.state.config.get("use_adc"):
                                 api_key = get_env_var("GEMINI_API_KEY")
                                 if not api_key:
-                                    self.console.print(get_banner(get_palette(self.state.config.get("theme", "one_dark"))))
+                                    self.console.print(get_banner(palette))
                                     self.console.print("\n[bold yellow] Configuration: GEMINI_API_KEY not found.[/bold yellow]")
-                                    api_key = Prompt.ask(" Enter your Google Gemini API Key", password=True)
+                                    api_key = self.custom_prompt("ENTER GEMINI_API_KEY", palette, password=True)
                                     if not api_key:
                                         self.console.print("[bold red]ERROR: API Key is required to proceed.[/bold red]")
                                         sys.exit(1)
@@ -111,21 +166,23 @@ class StratosDashboard:
                                         from dotenv import load_dotenv; load_dotenv()
                                     except Exception: pass
 
-                            palette = get_palette(self.state.config.get("theme", "one_dark"))
-                            styles = get_styles(palette)
                             display_mode = self.state.config.get("display_mode", "dashboard")
 
                             if display_mode == "dashboard":
                                 init_content = Text("\n Specify project details to begin development mission.\n Use '*' for quick MVP testing.\n", style=styles["dim"])
                                 self.console.print(get_banner(palette))
                                 self.console.print(make_gradient_panel(init_content, title=" MISSION INITIALIZATION ", palette=palette, expand=False))
-                                p_name = Prompt.ask(f"\n [bold {styles['accent']}]› PROJECT_NAME[/]")
+                                p_name = self.custom_prompt("› PROJECT_NAME", palette)
                             else:
                                 self.console.print(f"\n[bold {styles['accent']}]› MISSION INITIALIZATION[/]")
                                 self.console.print(f"[dim]Use '*' for quick MVP testing[/dim]\n")
-                                p_name = Prompt.ask(f"[bold {styles['accent']}]› PROJECT_NAME[/]")
+                                p_name = self.custom_prompt("› PROJECT_NAME", palette)
 
-                            p_desc = "MVP_TEST: Create a simple HTML/JS clock." if p_name == "*" else Prompt.ask(f" [bold {styles['accent']}]› DESCRIPTION[/]")
+                            if not p_name: 
+                                self.state.last_error = "Project name cannot be empty"
+                                break
+                                
+                            p_desc = "MVP_TEST: Create a simple HTML/JS clock." if p_name == "*" else self.custom_prompt("› DESCRIPTION", palette)
                             run_stratos(p_name, p_desc); break
                         
                         if opt["id"] == "PATH":
@@ -146,7 +203,7 @@ class StratosDashboard:
                                 path_content = Text(f"\n Select the root directory where your projects are stored.\n Current: {self.state.config.get('projects_path')}\n", style=styles["dim"])
                                 self.console.print(get_banner(palette))
                                 self.console.print(make_gradient_panel(path_content, title=" DIRECTORY CONFIGURATION ", palette=palette, expand=False))
-                                res = Prompt.ask(f"\n [bold {styles['accent']}]› ENTER ABSOLUTE PATH[/]")
+                                res = self.custom_prompt("› ENTER ABSOLUTE PATH", palette, default=self.state.config.get("projects_path", ""))
                             
                             if res and os.path.isdir(os.path.expanduser(res)):
                                 self.state.config["projects_path"] = os.path.expanduser(res)
@@ -160,7 +217,7 @@ class StratosDashboard:
                             setup_content = Text("\n Updating Gemini access credentials.\n Your key will be securely saved in the global config directory.\n", style=styles["dim"])
                             self.console.print(get_banner(palette))
                             self.console.print(make_gradient_panel(setup_content, title=" IDENTITY SETUP ", palette=palette, expand=False))
-                            key = Prompt.ask(f"\n [bold {styles['accent']}]› ENTER GEMINI_API_KEY[/]")
+                            key = self.custom_prompt("› ENTER GEMINI_API_KEY", palette, password=True)
                             if key:
                                 from stratos.utils.config import save_env_var
                                 save_env_var("GEMINI_API_KEY", key)
