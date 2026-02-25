@@ -4,119 +4,24 @@ import time
 import json
 import threading
 import signal
-import termios  # Added for terminal restoration
-from rich.prompt import Prompt
+import termios
 from rich.console import Console
+from rich.prompt import Prompt
 from google import genai
+
 from stratos.utils.logger import ProjectLogger
 from stratos.core.sandbox import Sandbox
 from stratos.core.pool import AIPool
 from stratos.utils.config import load_config, get_env_var
 from stratos.ui.controllers.execution_controller import ExecutionController
 
-def run_stratos(project_name=None, project_desc=None):
-    config = load_config()
-    console = Console()
-    
-    api_key = None
-    if not config.get("use_adc"):
-        api_key = get_env_var("GEMINI_API_KEY")
-        if not api_key:
-            console.print("[bold yellow]Configuration: GEMINI_API_KEY not found in environment.[/bold yellow]")
-            api_key = Prompt.ask("Enter your Google Gemini API Key", password=True)
-            if not api_key:
-                console.print("[bold red]ERROR: API Key is required to proceed.[/bold red]")
-                return
-            # Optional: Save to global config for future use
-            try:
-                from stratos.utils.config import save_env_var
-                save_env_var("GEMINI_API_KEY", api_key)
-                console.print("[dim]API Key saved to global config[/dim]")
-            except Exception:
-                pass
-
-    # Credentials retrieval
-    if not project_name:
-        project_name = Prompt.ask("PROJECT_NAME")
-    
-    if not project_desc:
-        if project_name == "*":
-            project_desc = "MVP_TEST: Create a simple HTML/JS clock that updates every second. Single file, high-contrast design."
-            console.print(f"[bold yellow]› QUICK_TEST MODE ACTIVATED[/bold yellow]")
-        else:
-            project_desc = Prompt.ask("DESCRIPTION")
-    
-    # Initialization
-    base_path = config.get("projects_path", "projects")
-    
-    # NEW STRUCTURE
-    session_root = os.path.join(base_path, project_name)
-    os.makedirs(session_root, exist_ok=True)
-    
-    # Code folder where agents work
-    sandbox_path = os.path.join(session_root, "project")
-    
-    sandbox = Sandbox(sandbox_path)
-    logger = ProjectLogger(config, project_path=sandbox_path)
-    logger.sandbox = sandbox # Link for UI status
-    sandbox.logger_instance = logger # Link for manual frames
-    
-    original_request = project_desc
-    # ... preprocessing overwrites project_desc -> this will be our MVP SPEC
-    
-    from stratos.ui.components.core import get_palette, get_styles
-    palette = get_palette(config.get("theme", "one_dark"))
-    styles = get_styles(palette)
-    
-    # === PRE-PROCESSING: ENRICH USER REQUEST ===
-    if project_desc and project_name != "*":
+class MissionMetadata:
+    """Handles persistence of mission results and statistics."""
+    @staticmethod
+    def save(project_name, project_desc, original_request, logger, session_root, sandbox_path):
         try:
-            with console.status("[bold blue]Analyzing request and generating MVP spec..."):
-                client = genai.Client(api_key=api_key)
-                enrichment_prompt = (
-                    "You are a Product Manager AI. Transform this simple user request into a comprehensive MVP specification. "
-                    "Focus on core features, user flow, and key functionality. Do not focus on specific implementation technology unless requested. "
-                    "Output a clear, structured list of requirements. Keep it under 200 words but make it complete.\n\n"
-                    f"USER REQUEST: {project_desc}"
-                )
-                response = client.models.generate_content(
-                    model="gemini-2.0-flash",
-                    contents=enrichment_prompt
-                )
-                if response.text:
-                    expanded_desc = response.text.strip()
-                    if config.get("display_mode") == "dashboard":
-                        console.print(f"\n[bold green]SPECIFICATION EXPANDED:[/bold green]\n{expanded_desc}\n")
-                    else:
-                        logger.log("SYSTEM", "Specification Expanded", style="success")
-                        logger.debug(f"FULL_SPEC: {expanded_desc}")
-                    logger.log("SYSTEM", f"Original Request: {project_desc}", style="info")
-                    project_desc = expanded_desc
-        except Exception as e:
-            console.print(f"[bold red]Warning: Spec expansion failed ({str(e)}). Using original request.[/bold red]")
-
-    ui_active = threading.Event()
-    ui_active.set()
-    sandbox.ui_active_event = ui_active
-
-    # Interruption Management
-    last_interrupt = 0
-    def restore_terminal_echo():
-        try:
-            fd = sys.stdin.fileno()
-            attrs = termios.tcgetattr(fd)
-            # Restore ECHO and ICANON
-            attrs[3] = attrs[3] | termios.ECHO | termios.ICANON
-            termios.tcsetattr(fd, termios.TCSADRAIN, attrs)
-        except Exception:
-            pass
-            
-    def save_metadata():
-        try:
-            end_time = time.time()
-            duration = end_time - logger.start_time
+            duration = time.time() - logger.state.start_time
             file_count = sum([len(files) for r, d, files in os.walk(sandbox_path)])
-            
             meta = {
                 "project_name": project_name,
                 "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -125,105 +30,167 @@ def run_stratos(project_name=None, project_desc=None):
                 "mvp_specification": project_desc,
                 "stats": {
                     "total_files": file_count,
-                    "total_commands_executed": getattr(logger, 'total_commands', 0),
-                    "total_tokens_used": logger.total_tokens,
-                    "unique_agents_count": len(getattr(logger, 'unique_agents', [])),
-                    "unique_agents_list": list(getattr(logger, 'unique_agents', []))
+                    "total_commands": logger.state.total_commands,
+                    "total_tokens": logger.state.total_tokens,
+                    "unique_agents": list(logger.state.unique_agents)
                 }
             }
-            
             with open(os.path.join(session_root, "metadata.json"), "w") as f:
                 json.dump(meta, f, indent=4)
-        except Exception as e:
-            # Last ditch attempt to print error if logging fails
-            pass
+        except Exception: pass
 
-    def signal_handler(sig, frame):
-        nonlocal last_interrupt
+class SignalManager:
+    """Handles OS signals and user interruptions."""
+    def __init__(self, logger, sandbox, metadata_callback):
+        self.logger = logger
+        self.sandbox = sandbox
+        self.metadata_callback = metadata_callback
+        self.last_interrupt = 0
+
+    def register(self):
+        signal.signal(signal.SIGINT, self._handle_sigint)
+
+    def _handle_sigint(self, sig, frame):
         now = time.time()
-        if now - last_interrupt < 3:
-            save_metadata()
-            restore_terminal_echo()
+        if now - self.last_interrupt < 3:
+            self.metadata_callback()
+            self._restore_terminal()
             os._exit(0)
-        last_interrupt = now
         
-        # ACTUALLY PAUSE THE AGENTS IMMEDIATELY
-        logger.paused = True
+        self.last_interrupt = now
+        self.logger.state.paused = True
         
-        # Save current prompt state if any
-        old_prompt = getattr(logger, 'active_prompt', None)
-        old_options = getattr(logger, 'prompt_options', None)
-        old_mode = getattr(logger, 'prompt_mode', 'text')
-        old_ready = getattr(logger, 'prompt_ready', None)
-        old_callback = getattr(logger, 'prompt_callback', None)
-        
-        def handle_interrupt(choice):
-            if choice == "exit":
-                save_metadata()
-                restore_terminal_echo()
-                os._exit(0)
-            elif choice == "instruct":
-                if getattr(logger, 'agent_is_waiting', False):
-                    # IA already blocked, switch to text mode immediately
-                    logger.prompt_mode = 'text'
-                    logger.active_prompt["question"] = "PAUSED: Enter your instruction below:"
-                    logger.prompt_input = ""
-                    logger.prompt_selection = 0
-                    logger.prompt_cursor_index = 0
-                else:
-                    # Still working, flag for automatic switch when it hits wait_if_paused
-                    logger.instruction_mode_requested = True
-                    logger.prompt_input = ""
-                    logger.prompt_cursor_index = 0
-                    logger.active_prompt["question"] = "WAITING: Switching to instruction mode once paused..."
-            else: # choice == "resume"
-                logger.paused = False
-                if old_prompt:
-                    # Restore old prompt
-                    logger.active_prompt = old_prompt
-                    logger.prompt_options = old_options
-                    logger.prompt_mode = old_mode
-                    logger.prompt_ready = old_ready
-                    logger.prompt_callback = old_callback
-                    logger.prompt_input = ""
-                    logger.prompt_selection = 0
-                else:
-                    logger.stop_prompt()
-                
+        # Save context for restoration
+        old_ctx = {
+            "prompt": getattr(self.logger.state, 'active_prompt', None),
+            "options": getattr(self.logger.state, 'prompt_options', None),
+            "mode": getattr(self.logger.state, 'prompt_mode', 'text'),
+            "ready": getattr(self.logger.state, 'prompt_ready', None),
+            "callback": getattr(self.logger.state, 'prompt_callback', None)
+        }
+
         options = [
             {"label": "Resume Mission", "value": "resume"},
             {"label": "Add Instruction", "value": "instruct"},
             {"label": "Exit Stratos", "value": "exit"}
         ]
-        # Start with 'requesting' message. logger.wait_if_paused will update it to 'PAUSED' when safe.
-        logger.start_prompt("SYSTEM", "INTERRUPT: Requesting mission pause...", options=options, callback=handle_interrupt)
+        self.logger.start_prompt("SYSTEM", "INTERRUPT: Mission paused.", options=options, 
+                                 callback=lambda c: self._process_interrupt(c, old_ctx))
 
-    signal.signal(signal.SIGINT, signal_handler)
+    def _process_interrupt(self, choice, old_ctx):
+        if choice == "exit":
+            self.metadata_callback()
+            self._restore_terminal()
+            os._exit(0)
+        elif choice == "instruct":
+            self._setup_instruction_mode()
+        else: # Resume
+            self.logger.state.paused = False
+            if old_ctx["prompt"]:
+                self.logger.state.active_prompt = old_ctx["prompt"]
+                self.logger.state.prompt_options = old_ctx["options"]
+                self.logger.state.prompt_mode = old_ctx["mode"]
+                self.logger.state.prompt_ready = old_ctx["ready"]
+                self.logger.state.prompt_callback = old_ctx["callback"]
+            else:
+                self.logger.stop_prompt()
 
-    project_info = {"name": project_name, "desc": project_desc}
-    pool = AIPool(sandbox, logger, api_key, project_info)
-    pool.setup_default_pool()
-    
-    task = f"DEVELOP_PROJECT: {project_name}. SPECS: {project_desc}"
-    
-    def run_mission():
+    def _setup_instruction_mode(self):
+        if self.logger.state.agent_is_waiting:
+            self.logger.state.prompt_mode = 'text'
+            self.logger.state.active_prompt["question"] = "PAUSED: Enter your instruction:"
+        else:
+            self.logger.state.instruction_mode_requested = True
+            self.logger.state.active_prompt["question"] = "WAITING: Switching to instruction mode..."
+
+    def _restore_terminal(self):
         try:
-            pool.broadcast_task(task)
-            logger.success("MISSION_COMPLETED")
-        except Exception as e:
-            logger.error(f"ENGINE_CRASH: {str(e)}")
-            import traceback
-            logger.debug(traceback.format_exc())
+            fd = sys.stdin.fileno()
+            attrs = termios.tcgetattr(fd)
+            attrs[3] |= (termios.ECHO | termios.ICANON)
+            termios.tcsetattr(fd, termios.TCSADRAIN, attrs)
+        except Exception: pass
 
-    mission_thread = threading.Thread(target=run_mission)
-    mission_thread.daemon = True
-    mission_thread.start()
+class MissionEngine:
+    """Core engine orchestrating the development mission."""
+    def __init__(self):
+        self.config = load_config()
+        self.console = Console()
+        self.api_key = self._ensure_api_key()
 
-    # Main dashboard loop
-    controller = ExecutionController(logger, sandbox, mission_thread, ui_active, styles, palette)
-    controller.run()
-    
-    save_metadata()
-            
-    console.print(f"\n[bold green]MISSION TERMINATED.[/bold green] Files: {sandbox_path}")
-    Prompt.ask("\nPress Enter to return")
+    def _ensure_api_key(self):
+        key = get_env_var("GEMINI_API_KEY")
+        if not key:
+            key = Prompt.ask("[bold yellow]Enter Gemini API Key[/]", password=True)
+            if key:
+                from stratos.utils.config import save_env_var
+                save_env_var("GEMINI_API_KEY", key)
+        return key
+
+    def run(self, project_name=None, project_desc=None):
+        if not project_name: project_name = Prompt.ask("PROJECT_NAME")
+        if not project_desc: project_desc = self._get_default_desc(project_name)
+        
+        # 1. Setup paths
+        base = self.config.get("projects_path", "projects")
+        session_root = os.path.join(base, project_name)
+        sandbox_path = os.path.join(session_root, "project")
+        os.makedirs(sandbox_path, exist_ok=True)
+
+        # 2. Initialize Components
+        sandbox = Sandbox(sandbox_path)
+        logger = ProjectLogger(self.config, project_path=sandbox_path)
+        logger.sandbox = sandbox
+        sandbox.logger_instance = logger
+        
+        # 3. Pre-processing
+        original_request = project_desc
+        project_desc = self._enrich_specification(project_desc, logger)
+
+        # 4. Signals
+        meta_saver = lambda: MissionMetadata.save(project_name, project_desc, original_request, logger, session_root, sandbox_path)
+        SignalManager(logger, sandbox, meta_saver).register()
+
+        # 5. Mission Start
+        pool = AIPool(sandbox, logger, self.api_key, {"name": project_name, "desc": project_desc})
+        pool.setup_default_pool()
+        
+        def mission_task():
+            try:
+                pool.broadcast_task(f"DEVELOP_PROJECT: {project_name}. SPECS: {project_desc}")
+                logger.success("MISSION_COMPLETED")
+            except Exception as e:
+                logger.error(f"CRASH: {str(e)}")
+
+        threading.Thread(target=mission_task, daemon=True).start()
+
+        # 6. UI Loop
+        from stratos.ui.components.core import get_palette, get_styles
+        palette = get_palette(self.config.get("theme", "one_dark"))
+        ui_active = threading.Event(); ui_active.set()
+        sandbox.ui_active_event = ui_active
+        
+        ExecutionController(logger, sandbox, threading.current_thread(), ui_active, get_styles(palette), palette).run()
+        
+        meta_saver()
+        self.console.print(f"\n[bold green]MISSION TERMINATED.[/] Files: {sandbox_path}")
+
+    def _get_default_desc(self, name):
+        if name == "*": return "MVP_TEST: Create a simple HTML/JS clock."
+        return Prompt.ask("DESCRIPTION")
+
+    def _enrich_specification(self, desc, logger):
+        if desc.startswith("MVP_TEST"): return desc
+        try:
+            with self.console.status("[bold blue]Enriching Spec..."):
+                client = genai.Client(api_key=self.api_key)
+                from stratos.assets import load_prompt
+                res = client.models.generate_content(model="gemini-2.0-flash", contents=load_prompt("pm_enrichment", project_desc=desc))
+                if res.text:
+                    logger.info("Specification enriched by PM.")
+                    return res.text.strip()
+        except Exception: pass
+        return desc
+
+def run_stratos(project_name=None, project_desc=None):
+    MissionEngine().run(project_name, project_desc)

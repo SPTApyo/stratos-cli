@@ -1,4 +1,15 @@
 {
     "python.defaultInterpreterPath": "${workspaceFolder}/stratos/venv/bin/python",
-    "python.analysis.extraPaths": ["${workspaceFolder}/stratos/venv/lib/python3.14/site-packages"]
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/stratos/venv/lib/python3.14/site-packages"
+    ],
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "./tests",
+        "-p",
+        "test_*.py"
+    ],
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestEnabled": true
 }

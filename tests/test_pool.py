@@ -38,7 +38,7 @@ class TestBlackboard(unittest.TestCase):
         for i in range(100):
             self.blackboard.post_discussion("AGENT", f"Message {i}")
         
-        context = self.blackboard.get_all_context()
+        context = self.blackboard.get_full_context()
         # Should only contain last 8 logs (since it's under 60k threshold)
         self.assertIn("Message 99", context)
         self.assertNotIn("Message 0", context)

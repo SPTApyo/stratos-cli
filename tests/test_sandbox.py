@@ -15,16 +15,16 @@ class TestSandbox(unittest.TestCase):
 
     # --- _safe_path tests ---
     def test_safe_path_valid(self):
-        path = self.sandbox._safe_path("test.txt")
-        self.assertEqual(path, Path(self.test_dir) / "test.txt")
+        path = self.sandbox.files._safe_path("test.txt")
+        self.assertEqual(path, Path(self.test_dir).resolve() / "test.txt")
 
     def test_safe_path_escape_attempt(self):
         with self.assertRaises(PermissionError):
-            self.sandbox._safe_path("../outside.txt")
+            self.sandbox.files._safe_path("../outside.txt")
 
     def test_safe_path_absolute_outside(self):
         with self.assertRaises(PermissionError):
-            self.sandbox._safe_path("/etc/passwd")
+            self.sandbox.files._safe_path("/etc/passwd")
 
     # --- write_file tests ---
     def test_write_file_success(self):
@@ -71,15 +71,15 @@ class TestSandbox(unittest.TestCase):
     # --- safety tests ---
     def test_validate_command_safe(self):
         try:
-            self.sandbox._validate_command_safety("ls -la")
+            self.sandbox.shell.validate_command("ls -la")
         except PermissionError:
-            self.fail("_validate_command_safety raised PermissionError unexpectedly")
+            self.fail("validate_command raised PermissionError unexpectedly")
 
     def test_validate_command_dangerous(self):
         with self.assertRaises(PermissionError):
-            self.sandbox._validate_command_safety("rm -rf /")
+            self.sandbox.shell.validate_command("rm -rf /")
         with self.assertRaises(PermissionError):
-            self.sandbox._validate_command_safety("mkfs.ext4 /dev/sda1")
+            self.sandbox.shell.validate_command("mkfs.ext4 /dev/sda1")
 
     # --- execute_command tests ---
     def test_execute_command_success(self):

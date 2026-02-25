@@ -1,0 +1,5 @@
+LEADERSHIP_PHASE: Analyze the goal '{task}' and current state.
+1. Choose the language and tech stack.
+2. Update the 'MASTER_PLAN' key on the blackboard.
+3. Update the 'TODO_LIST' key with clear, actionable steps.
+4. Assign specific focus for this cycle.
