@@ -108,7 +108,7 @@ jobs:
           arch=('any')
           url="${{ steps.meta.outputs.URL }}"
           license=('${{ steps.meta.outputs.LICENSE }}')
-          depends=('python>=3.10' 'python-rich' 'python-dotenv' 'python-readchar' 'python-google-generativeai' 'python-duckduckgo-search')
+          depends=('python>=3.10' 'python-rich' 'python-dotenv' 'python-google-generativeai' 'python-duckduckgo-search')
           makedepends=('python-build' 'python-installer' 'python-wheel' 'python-setuptools')
           source=("${{ steps.meta.outputs.URL }}/archive/refs/tags/v\${pkgver}.tar.gz")
           sha256sums=('SKIP')

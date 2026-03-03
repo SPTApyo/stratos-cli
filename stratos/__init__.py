@@ -1,4 +1,4 @@
-__version__ = "0.1"
+__version__ = "0.1.1"
 __app_name__ = "stratos-cli"
 __description__ = "Multi-Agent Autonomous Coding System for Terminal"
 __author__ = "SPTApyo"
