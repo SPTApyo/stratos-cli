@@ -33,6 +33,8 @@ def parse_arguments():
     return parser.parse_args()
 
 def main_entry():
+    from rich.console import Console
+    Console().clear()
     args = parse_arguments()
     
     # Apply configuration resets first

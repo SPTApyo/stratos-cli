@@ -13,3 +13,10 @@ def load_prompt(name: str, **kwargs) -> str:
         content = f.read()
     
     return content.format(**kwargs)
+
+def load_tools() -> dict:
+    """Loads all tool definitions and schemas from assets."""
+    import json
+    path = os.path.join(ASSETS_DIR, "tools.json")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
