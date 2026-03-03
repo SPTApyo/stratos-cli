@@ -1,72 +1,104 @@
 {
+    "GLOBAL_SHORTCUTS": {
+        "escape": {"action": "BACK", "desc": "Return to previous menu or main"}
+    },
+    "INTERRUPT": {
+        "title": "MISSION PAUSED",
+        "options": [
+            {"id": "resume", "label": "Resume Mission", "desc": "Continue current task"},
+            {"id": "instruct", "label": "Add Instruction", "desc": "Provide feedback or orders"},
+            {"id": "exit", "label": "Exit Stratos", "desc": "Terminate mission"}
+        ]
+    },
     "MAIN": {
         "title": "CONTROL",
         "path": "/main",
         "options": [
-            {"id": "LAUNCH", "label": "START AGENT TEAM", "desc": "Initialize multi-agent cooperation"},
-            {"id": "SETTINGS", "label": "SYSTEM SETTINGS", "desc": "Configure core parameters"},
-            {"id": "EXIT", "label": "EXIT STRATOS", "desc": "Terminate processes"}
+            {"id": "MISSION_TYPE", "label": "START MISSION", "desc": "Initialize agent cooperation", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "SETTINGS", "label": "SYSTEM SETTINGS", "desc": "Configure core parameters", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "EXIT", "label": "EXIT STRATOS", "desc": "Terminate processes", "interaction": {"trigger": "enter", "back": false}}
+        ]
+    },
+    "MISSION_TYPE": {
+        "title": "MISSION TYPE",
+        "path": "/main/mission",
+        "options": [
+            {"id": "NEW_PROJECT", "label": "NEW PROJECT", "desc": "Create a codebase from scratch", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "EXISTING_MODES", "label": "EXISTING PROJECT", "desc": "Evolve an existing codebase", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "BACK", "label": "BACK", "desc": "Return to control", "interaction": {"trigger": "enter", "back": true}}
+        ]
+    },
+    "EXISTING_MODES": {
+        "title": "EXISTING PROJECT",
+        "path": "/main/mission/existing",
+        "options": [
+            {"id": "MISSION_REFACTOR", "label": "REFACTORING", "desc": "Clean and optimize existing code", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "MISSION_IMPROVE", "label": "IMPROVEMENT", "desc": "Add new features to codebase", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "MISSION_ANALYZE", "label": "ANALYSIS", "desc": "Deep audit and understanding", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "MISSION_DOCS", "label": "DOCUMENTATION", "desc": "Generate README and technical docs", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "MISSION_COMMENTS", "label": "CODE COMMENTS", "desc": "Add clear documentation strings", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "BACK_MISSION", "label": "BACK", "desc": "Return to mission type", "interaction": {"trigger": "enter", "back": true}}
         ]
     },
     "SETTINGS": {
         "title": "SETTINGS",
-        "path": "/settings",
+        "path": "/main/settings",
         "options": [
-            {"id": "PATH", "label": "PROJECTS PATH", "desc": "Set root directory"},
-            {"id": "THEME_MENU", "label": "VISUAL THEME", "desc": "UI & Syntax colors"},
-            {"id": "DISPLAY_MODE", "label": "DISPLAY INTERFACE", "desc": "Switch Dashboard / Console"},
-            {"id": "SHOW_RESULTS", "label": "RESULT PREVIEW", "desc": "Show code snippets in logs"},
-            {"id": "THOUGHTS", "label": "THOUGHT FLOW", "desc": "Toggle reasoning logs"},
-            {"id": "DEBUG", "label": "DEBUG MODE", "desc": "Technical tracing"},
-            {"id": "AUTH", "label": "IDENTITY CONFIG", "desc": "Manage Gemini API Key"},
-            {"id": "BACK", "label": "BACK TO MAIN", "desc": "Return to control"}
+            {"id": "PATH", "label": "PROJECTS PATH", "desc": "Set root directory", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "THEME_MENU", "label": "VISUAL THEME", "desc": "UI & Syntax colors", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "DISPLAY_MODE", "label": "DISPLAY INTERFACE", "desc": "Switch Dashboard / Console", "interaction": {"trigger": "space", "back": false}},
+            {"id": "SHOW_RESULTS", "label": "RESULT PREVIEW", "desc": "Show code snippets in logs", "interaction": {"trigger": "space", "back": false}},
+            {"id": "THOUGHTS", "label": "THOUGHT FLOW", "desc": "Toggle reasoning logs", "interaction": {"trigger": "space", "back": false}},
+            {"id": "DEBUG", "label": "DEBUG MODE", "desc": "Technical tracing", "interaction": {"trigger": "space", "back": false}},
+            {"id": "AUTH", "label": "IDENTITY CONFIG", "desc": "Manage Gemini API Key", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "BACK", "label": "BACK TO MAIN", "desc": "Return to control", "interaction": {"trigger": "enter", "back": true}}
         ]
     },
     "THEME_MENU": {
         "title": "VISUAL THEME",
-        "path": "/settings/theme",
+        "path": "/main/settings/theme",
         "options": [
-            {"id": "THEME_MODE", "label": "APPEARANCE MODE", "desc": "Switch Dark / Light UI"},
-            {"id": "THEME_SELECT", "label": "THEME PALETTE", "desc": "Choose your color style"},
-            {"id": "BACK_SETTINGS", "label": "BACK", "desc": "Return to settings"}
+            {"id": "THEME_MODE", "label": "APPEARANCE MODE", "desc": "Switch Dark / Light UI", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "THEME_SELECT", "label": "THEME PALETTE", "desc": "Choose your color style", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "BACK_SETTINGS", "label": "BACK", "desc": "Return to settings", "interaction": {"trigger": "enter", "back": true}}
         ]
     },
     "THEME_MODE": {
         "title": "APPEARANCE MODE",
-        "path": "/settings/theme/mode",
+        "path": "/main/settings/theme/mode",
         "options": [
-            {"id": "MODE_DARK", "label": "DARK MODE", "desc": "Optimized for low-light"},
-            {"id": "MODE_LIGHT", "label": "LIGHT MODE", "desc": "High contrast UI"},
-            {"id": "BACK_THEME", "label": "BACK", "desc": "Return to theme menu"}
+            {"id": "MODE_DARK", "label": "DARK MODE", "desc": "Optimized for low-light", "interaction": {"trigger": "enter", "back": true}},
+            {"id": "MODE_LIGHT", "label": "LIGHT MODE", "desc": "High contrast UI", "interaction": {"trigger": "enter", "back": true}},
+            {"id": "BACK_THEME", "label": "BACK", "desc": "Return to theme menu", "interaction": {"trigger": "enter", "back": true}}
         ]
     },
     "THEME_SELECT": {
         "title": "THEME PALETTE",
-        "path": "/settings/theme/select",
+        "path": "/main/settings/theme/select",
         "options": [
-            {"id": "stratos", "label": "STRATOS", "desc": "Flagship high-contrast gradient"},
-            {"id": "tokyo_night", "label": "TOKYO NIGHT", "desc": "Deep blue Neovim aesthetic"},
-            {"id": "catppuccin", "label": "CATPPUCCIN", "desc": "Soothing pastel tones"},
-            {"id": "dracula", "label": "DRACULA", "desc": "Vampire palette"},
-            {"id": "monokai", "label": "MONOKAI", "desc": "The timeless dev classic"},
-            {"id": "nord", "label": "NORD", "desc": "Arctic North-Blue"},
-            {"id": "gruvbox", "label": "GRUVBOX", "desc": "Retro earthy colors"},
-            {"id": "one", "label": "ATOM ONE", "desc": "Official Atom style"},
-            {"id": "github", "label": "GITHUB", "desc": "Classic Octocat aesthetic"},
-            {"id": "solarized", "label": "SOLARIZED", "desc": "Precision palette"},
-            {"id": "matrix", "label": "MATRIX", "desc": "Follow the white rabbit"},
-            {"id": "cyberpunk", "label": "CYBERPUNK", "desc": "Neon pink & cyan glitch"},
-            {"id": "xcode", "label": "XCODE", "desc": "Apple IDE style (Light only)"},
-            {"id": "ansi", "label": "TERMINAL", "desc": "Standard ANSI colors"},
-            {"id": "BACK_THEME", "label": "BACK", "desc": "Return to theme menu"}
+            {"id": "stratos", "label": "STRATOS", "desc": "Flagship high-contrast gradient", "interaction": {"trigger": "enter", "back": true}},
+            {"id": "tokyo_night", "label": "TOKYO NIGHT", "desc": "Deep blue Neovim aesthetic", "interaction": {"trigger": "enter", "back": true}},
+            {"id": "catppuccin", "label": "CATPPUCCIN", "desc": "Soothing pastel tones", "interaction": {"trigger": "enter", "back": true}},
+            {"id": "dracula", "label": "DRACULA", "desc": "Vampire palette", "interaction": {"trigger": "enter", "back": true}},
+            {"id": "monokai", "label": "MONOKAI", "desc": "The timeless dev classic", "interaction": {"trigger": "enter", "back": true}},
+            {"id": "nord", "label": "NORD", "desc": "Arctic North-Blue", "interaction": {"trigger": "enter", "back": true}},
+            {"id": "gruvbox", "label": "GRUVBOX", "desc": "Retro earthy colors", "interaction": {"trigger": "enter", "back": true}},
+            {"id": "one", "label": "ATOM ONE", "desc": "Official Atom style", "interaction": {"trigger": "enter", "back": true}},
+            {"id": "github", "label": "GITHUB", "desc": "Classic Octocat aesthetic", "interaction": {"trigger": "enter", "back": true}},
+            {"id": "solarized", "label": "SOLARIZED", "desc": "Precision palette", "interaction": {"trigger": "enter", "back": true}},
+            {"id": "matrix", "label": "MATRIX", "desc": "Follow the white rabbit", "interaction": {"trigger": "enter", "back": true}},
+            {"id": "cyberpunk", "label": "CYBERPUNK", "desc": "Neon pink & cyan glitch", "interaction": {"trigger": "enter", "back": true}},
+            {"id": "xcode", "label": "XCODE", "desc": "Apple IDE style (Light ocdenly)", "interaction": {"trigger": "enter", "back": true}},
+            {"id": "ansi", "label": "TERMINAL", "desc": "Standard ANSI colors", "interaction": {"trigger": "enter", "back": true}},
+            {"id": "BACK_THEME", "label": "BACK", "desc": "Return to theme menu", "interaction": {"trigger": "enter", "back": true}}
         ]
     },
     "AUTH": {
         "title": "IDENTITY",
-        "path": "/auth",
+        "path": "/main/settings/auth",
         "options": [
-            {"id": "key", "label": "UPDATE API KEY", "desc": "Enter your Gemini API Key"},
-            {"id": "BACK_SETTINGS", "label": "BACK", "desc": "Return to settings"}
+            {"id": "key", "label": "UPDATE API KEY", "desc": "Enter your Gemini API Key", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "BACK_SETTINGS", "label": "BACK", "desc": "Return to settings", "interaction": {"trigger": "enter", "back": true}}
         ]
     }
 }

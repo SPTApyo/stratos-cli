@@ -3,6 +3,7 @@ from rich.text import Text
 from rich.layout import Layout
 from rich.table import Table
 from rich.syntax import Syntax
+from rich.align import Align
 from stratos.ui.components.core import get_styles, get_palette, MENUS
 from stratos.ui.components.panels import make_gradient_panel
 from stratos.ui.components.banner import get_banner
@@ -56,28 +57,33 @@ def get_theme_preview_content(theme_id, palette):
     preview_table.add_row(code_preview)
     return preview_table
 
-def render_launch_dashboard(state, options=None):
+def render_launch_dashboard(state, options=None, input_panel=None):
     current_theme_id = state.config.get("theme", "one_dark")
     palette = get_palette(current_theme_id)
     styles = get_styles(palette)
     menu_data = MENUS[state.menu_state]
     
-    # Use provided options or fallback to default
     if options is None:
         options = menu_data["options"]
         
     layout = Layout()
     
-    layout.split_column(
+    # Define main sections
+    main_column = [
         Layout(get_banner(palette), size=11),
-        Layout(get_user_header(palette, state.config), size=2),
+        Layout(get_user_header(palette, state.config), size=1),
         Layout(get_notification(state, palette), size=1),
         Layout(make_gradient_panel(Text("> " + menu_data['path'], style=styles["base"]), palette=palette), size=3),
         Layout(name="main", ratio=1)
-    )
+    ]
+    
+    # Add input section at the bottom if active
+    if input_panel:
+        main_column.append(Layout(input_panel, size=3))
+        
+    layout.split_column(*main_column)
     
     toggles = ["THOUGHTS", "DEBUG", "DISPLAY_MODE", "SHOW_RESULTS"]
-    # Ensure selected_index is within bounds
     sel_idx = min(state.selected_index, len(options) - 1)
     opt = options[sel_idx]
     
@@ -104,8 +110,20 @@ def render_launch_dashboard(state, options=None):
         right_title = " SYSTEM STATUS "
         right_footer = f" STRATOS CORE v{__version__} "
         
-    layout["main"].split_row(
-        Layout(make_gradient_panel(menu_text, title=" NAVIGATION ", footer=nav_footer, palette=palette), ratio=2),
-        Layout(make_gradient_panel(right_content, title=right_title, footer=right_footer, palette=palette), ratio=3)
+    # Panels
+    nav_panel = make_gradient_panel(
+        menu_text, title=" NAVIGATION ", footer=nav_footer, 
+        palette=palette, expand=False, padding=(1, 4)
     )
+    status_panel = make_gradient_panel(
+        right_content, title=right_title, footer=right_footer, 
+        palette=palette, expand=False, padding=(1, 4)
+    )
+    
+    main_grid = Table.grid(expand=True)
+    main_grid.add_column(ratio=1); main_grid.add_column(); main_grid.add_column(width=6); main_grid.add_column(); main_grid.add_column(ratio=1)
+    main_grid.add_row(None, nav_panel, None, status_panel, None)
+    
+    layout["main"].update(Align.center(main_grid))
+    
     return layout

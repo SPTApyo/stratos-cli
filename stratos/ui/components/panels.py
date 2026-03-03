@@ -30,6 +30,28 @@ def make_gradient_panel(content, title="", footer="", palette=None, padding=(0, 
         table.add_row(Text("╰", style=f"bold {p1}"), GradientLine("─", p1, p2, title=footer, align="right"), Text("╯", style=f"bold {p2}"))
         return table
 
+def make_input_panel(label, text, cursor_pos, password=False):
+    """Creates a bright yellow panel for user input with a block cursor, stretching full width."""
+    display_text = "*" * len(text) if password else text
+    content = Text()
+    cursor_pos = max(0, min(cursor_pos, len(display_text)))
+    
+    before = display_text[:cursor_pos]
+    at = display_text[cursor_pos] if cursor_pos < len(display_text) else " "
+    after = display_text[cursor_pos+1:] if cursor_pos < len(display_text) else ""
+    
+    content.append(before, style="bold white")
+    content.append(at, style="bold black on yellow")
+    content.append(after, style="bold white")
+    
+    return Panel(
+        content,
+        title=f"[bold yellow] {label} [/bold yellow]",
+        border_style="bold yellow",
+        padding=(0, 1),
+        expand=True
+    )
+
 def make_interaction_box(prompt_data, prompt_mode, prompt_input, prompt_options, prompt_selection, palette, prompt_cursor_index=None):
     """Creates the bright yellow interaction box for AI questions and command approvals."""
     p_content = Text("\n")
@@ -39,7 +61,6 @@ def make_interaction_box(prompt_data, prompt_mode, prompt_input, prompt_options,
         if "prompt_preview" in det:
             p_content.append(f" SYSTEM PROMPT PREVIEW:\n", style="bold yellow")
             prev = det["prompt_preview"]
-            # Showing middle part for context if too long
             if len(prev) > 800: prev = prev[:400] + "\n\n[...] [TRUNCATED FOR DISPLAY] [...]\n\n" + prev[-400:]
             p_content.append(f"{prev}\n", style="italic white")
         else:
@@ -59,18 +80,13 @@ def make_interaction_box(prompt_data, prompt_mode, prompt_input, prompt_options,
             p_content.append(f"{cursor}{opt['label']}\n", style=style)
     else:
         p_content.append(f"\n › YOUR ANSWER: ", style="bold yellow")
-        
-        # Cursor rendering logic
         idx = prompt_cursor_index if prompt_cursor_index is not None else len(prompt_input)
-        # Ensure idx is within bounds
         idx = max(0, min(idx, len(prompt_input)))
-        
         before_cursor = prompt_input[:idx]
         at_cursor = prompt_input[idx] if idx < len(prompt_input) else " "
         after_cursor = prompt_input[idx+1:] if idx < len(prompt_input) else ""
-        
         p_content.append(before_cursor, style="bold white")
-        p_content.append(at_cursor, style="bold black on white") # Cursor effect
+        p_content.append(at_cursor, style="bold black on white") 
         p_content.append(after_cursor, style="bold white")
     
     return make_gradient_panel(
@@ -85,7 +101,6 @@ def make_console_interaction(prompt_data, prompt_mode, prompt_input, prompt_opti
     """Creates a simple, non-boxed interaction display for console mode."""
     p_content = Text()
     det = prompt_data.get("details")
-    
     if det:
         p_content.append(f"\n › [ACTION REQUIRED] ", style="bold yellow")
         p_content.append(f"Command: {det['command']}", style="bold white")
@@ -93,7 +108,6 @@ def make_console_interaction(prompt_data, prompt_mode, prompt_input, prompt_opti
     else:
         p_content.append(f"\n › [{prompt_data['agent']}] ", style="bold yellow")
         p_content.append(f"{prompt_data['question']}\n", style="bold white")
-        
     if prompt_mode == 'menu':
         for i, opt in enumerate(prompt_options):
             cursor = "  ❯ " if i == prompt_selection else "    "
@@ -106,5 +120,4 @@ def make_console_interaction(prompt_data, prompt_mode, prompt_input, prompt_opti
         p_content.append(prompt_input[:idx], style="bold white")
         p_content.append(prompt_input[idx:idx+1] or " ", style="bold black on white")
         p_content.append(prompt_input[idx+1:], style="bold white")
-        
     return p_content

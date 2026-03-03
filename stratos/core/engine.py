@@ -60,6 +60,12 @@ class SignalManager:
         self.last_interrupt = now
         self.logger.state.paused = True
         
+        # Load interrupt options from assets
+        from stratos.ui.components.core import MENUS
+        interrupt_menu = MENUS.get("INTERRUPT", {})
+        options = [{"label": o["label"], "value": o["id"]} for o in interrupt_menu.get("options", [])]
+        title = interrupt_menu.get("title", "INTERRUPT: Mission paused.")
+
         # Save context for restoration
         old_ctx = {
             "prompt": getattr(self.logger.state, 'active_prompt', None),
@@ -69,12 +75,7 @@ class SignalManager:
             "callback": getattr(self.logger.state, 'prompt_callback', None)
         }
 
-        options = [
-            {"label": "Resume Mission", "value": "resume"},
-            {"label": "Add Instruction", "value": "instruct"},
-            {"label": "Exit Stratos", "value": "exit"}
-        ]
-        self.logger.start_prompt("SYSTEM", "INTERRUPT: Mission paused.", options=options, 
+        self.logger.start_prompt("SYSTEM", title, options=options, 
                                  callback=lambda c: self._process_interrupt(c, old_ctx))
 
     def _process_interrupt(self, choice, old_ctx):
@@ -127,14 +128,19 @@ class MissionEngine:
                 save_env_var("GEMINI_API_KEY", key)
         return key
 
-    def run(self, project_name=None, project_desc=None):
+    def run(self, project_name=None, project_desc=None, existing_path=None):
         if not project_name: project_name = Prompt.ask("PROJECT_NAME")
         if not project_desc: project_desc = self._get_default_desc(project_name)
         
         # 1. Setup paths
-        base = self.config.get("projects_path", "projects")
-        session_root = os.path.join(base, project_name)
-        sandbox_path = os.path.join(session_root, "project")
+        if existing_path:
+            sandbox_path = os.path.abspath(os.path.expanduser(existing_path))
+            session_root = sandbox_path # For metadata
+        else:
+            base = self.config.get("projects_path", "projects")
+            session_root = os.path.join(base, project_name)
+            sandbox_path = os.path.join(session_root, "project")
+            
         os.makedirs(sandbox_path, exist_ok=True)
 
         # 2. Initialize Components
@@ -192,5 +198,5 @@ class MissionEngine:
         except Exception: pass
         return desc
 
-def run_stratos(project_name=None, project_desc=None):
-    MissionEngine().run(project_name, project_desc)
+def run_stratos(project_name=None, project_desc=None, existing_path=None):
+    MissionEngine().run(project_name, project_desc, existing_path)

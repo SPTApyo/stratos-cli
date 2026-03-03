@@ -1,0 +1,162 @@
+{
+    "write_file": {
+        "description": "Writes content to a specific file. Overwrites if it exists. Creates parent directories automatically.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "path": {"type": "STRING", "description": "Relative path to the file."},
+                "content": {"type": "STRING", "description": "Full text content to write."}
+            },
+            "required": ["path", "content"]
+        }
+    },
+    "read_file": {
+        "description": "Reads the content of a file. Supports line range for large files.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "path": {"type": "STRING", "description": "Path to the file."},
+                "start_line": {"type": "INTEGER", "description": "First line to read (1-indexed)."},
+                "end_line": {"type": "INTEGER", "description": "Last line to read."}
+            },
+            "required": ["path"]
+        }
+    },
+    "smart_replace": {
+        "description": "Surgically replaces a specific block of text in a file. Requires exact match of the old_text.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "path": {"type": "STRING", "description": "Path to the file."},
+                "old_text": {"type": "STRING", "description": "The exact literal text to find."},
+                "new_text": {"type": "STRING", "description": "The replacement text."}
+            },
+            "required": ["path", "old_text", "new_text"]
+        }
+    },
+    "execute_command": {
+        "description": "Executes a bash command in the project root. Requires human approval.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "command": {"type": "STRING", "description": "The shell command to run."}
+            },
+            "required": ["command"]
+        }
+    },
+    "grep_search": {
+        "description": "Searches for a regex pattern inside all files in a directory.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "pattern": {"type": "STRING", "description": "Regex pattern to search for."},
+                "path": {"type": "STRING", "description": "Subdirectory to search in (default is root)."}
+            },
+            "required": ["pattern"]
+        }
+    },
+    "glob_search": {
+        "description": "Finds files matching a glob pattern (e.g., '**/*.py').",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "pattern": {"type": "STRING", "description": "Glob pattern."}
+            },
+            "required": ["pattern"]
+        }
+    },
+    "search_web": {
+        "description": "Searches the internet for documentation or solutions using DuckDuckGo.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "query": {"type": "STRING", "description": "Search engine query."}
+            },
+            "required": ["query"]
+        }
+    },
+    "web_fetch": {
+        "description": "Retrieves the raw content of a URL (HTML/Text).",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "url": {"type": "STRING", "description": "The URL to fetch."}
+            },
+            "required": ["url"]
+        }
+    },
+    "ask_user": {
+        "description": "Asks the human user a question when you are stuck or need specific info.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "question": {"type": "STRING", "description": "The question for the user."}
+            },
+            "required": ["question"]
+        }
+    },
+    "request_confirmation": {
+        "description": "Requests a Yes/No confirmation for a specific planned action.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "action": {"type": "STRING", "description": "The action needing confirmation."}
+            },
+            "required": ["action"]
+        }
+    },
+    "git_init": {
+        "description": "Initializes a Git repository in the project root.",
+        "parameters": {"type": "OBJECT", "properties": {}}
+    },
+    "git_commit": {
+        "description": "Adds all changes and creates a Git commit.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "message": {"type": "STRING", "description": "Commit message."}
+            },
+            "required": ["message"]
+        }
+    },
+    "get_structure_tree": {
+        "description": "Returns a visual tree of the current project directory structure.",
+        "parameters": {"type": "OBJECT", "properties": {}}
+    },
+    "install_dependencies": {
+        "description": "Installs Python packages from requirements.txt.",
+        "parameters": {"type": "OBJECT", "properties": {}}
+    },
+    "update_todo_list": {
+        "description": "Updates the shared team TODO_LIST on the blackboard.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "todo_content": {"type": "STRING", "description": "Updated markdown list of tasks."}
+            },
+            "required": ["todo_content"]
+        }
+    },
+    "report_status": {
+        "description": "Logs a status update to the mission dashboard without blocking.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "message": {"type": "STRING", "description": "Status message to log."}
+            },
+            "required": ["message"]
+        }
+    },
+    "request_specialist": {
+        "description": "Recruits a new specialized expert agent for a specific task.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "role_name": {"type": "STRING", "description": "Unique ID for the role (e.g. DATABASE_EXPERT)."},
+                "role_description": {"type": "STRING", "description": "Detailed mission for this specialist."},
+                "weight": {"type": "STRING", "enum": ["HEAVY", "MEDIUM", "LIGHT"], "description": "Model power required."}
+            },
+            "required": ["role_name", "role_description"]
+        }
+    }
+}

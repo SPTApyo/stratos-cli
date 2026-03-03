@@ -84,19 +84,24 @@ class AIPool:
         self.blackboard = Blackboard(sandbox, logger)
 
     def setup_default_pool(self):
-        """Initializes the core team of agents."""
-        roles = {
-            "MANAGER": {"desc": "PROJECT_LEADER: Define tech stack, roadmap, and maintain the TODO_LIST.", "model": self.MODELS["HEAVY"]},
-            "ARCHITECT": {"desc": "SYSTEM_DESIGNER: Create file structures and specifications.", "model": self.MODELS["MEDIUM"]},
-            "CODER": {"desc": "IMPLEMENTATION_ENGINEER: Write code following the roadmap.", "model": self.MODELS["LIGHT"]},
-            "REVIEWER": {"desc": "QUALITY_ASSURANCE: Test code and verify requirements.", "model": self.MODELS["MEDIUM"]},
-            "DOCUMENTATION": {"desc": "TECHNICAL_WRITER: Update manuals and README.", "model": self.MODELS["LIGHT"]}
-        }
+        """Initializes the core team of agents based on authorized roles."""
+        from stratos.core.roles import AgentRole
+        
+        # Load default team composition from roles.json
+        default_roles = AgentRole.get_default_roles()
         
         from .agent import AIAgent
-        for role, data in roles.items():
-            agent = AIAgent(f"AGENT_{role}", data["desc"], self.sandbox, self.logger, self.api_key, self.project_info, pool_callback=self.request_specialist, model_id=data["model"])
-            # Standardize tool: update_todo_list
+        for role, data in default_roles.items():
+            agent = AIAgent(
+                f"AGENT_{role}", 
+                role, 
+                self.sandbox, 
+                self.logger, 
+                self.api_key, 
+                self.project_info, 
+                pool_callback=self.request_specialist, 
+                model_id=self.MODELS["HEAVY"] if role == "MANAGER" else self.MODELS["MEDIUM"]
+            )
             agent.tool_map["update_todo_list"] = self._tool_update_todo
             self.agents[role] = agent
             
@@ -108,14 +113,30 @@ class AIPool:
         return "SUCCESS: Global TODO_LIST updated."
 
     def request_specialist(self, role_name, role_description, weight='MEDIUM') -> str:
-        """Dynamic recruitment of expert agents."""
+        """Dynamic recruitment of expert agents, strictly restricted to roles.json."""
+        from stratos.core.roles import AgentRole
+        role_name = role_name.upper()
+        
+        if not AgentRole.is_valid_role(role_name):
+            return f"ERROR: Unauthorized role '{role_name}'. Recruitment denied. (Add to roles.json first)"
+            
         weight = weight.upper()
-        if role_name in self.agents or role_name in self.specialists: return f"INFO: {role_name} already exists."
+        if role_name in self.agents or role_name in self.specialists: 
+            return f"INFO: {role_name} already exists."
         
         from .agent import AIAgent
         self.logger.info(f"DYNAMIC_RECRUITMENT: {role_name}")
         
-        spec = AIAgent(f"EXPERT_{role_name}", role_description, self.sandbox, self.logger, self.api_key, self.project_info, pool_callback=self.request_specialist, model_id=self.MODELS.get(weight, self.MODELS["MEDIUM"]))
+        spec = AIAgent(
+            f"EXPERT_{role_name}", 
+            role_name, 
+            self.sandbox, 
+            self.logger, 
+            self.api_key, 
+            self.project_info, 
+            pool_callback=self.request_specialist, 
+            model_id=self.MODELS.get(weight, self.MODELS["MEDIUM"])
+        )
         spec.tool_map["update_todo_list"] = self._tool_update_todo
         self.specialists[role_name] = spec
         return f"SUCCESS: {role_name} joined."

@@ -10,8 +10,13 @@ class AIAgent:
     """Refactored AI Agent following Clean Code principles: SRP and KISS."""
     
     def __init__(self, name, role, sandbox, logger, api_key, project_info, pool_callback=None, model_id='gemini-2.5-flash'):
+        from stratos.core.roles import AgentRole
+        if not AgentRole.is_valid_role(role):
+            logger.error(f"FATAL: Unauthorized agent role '{role}'. Please use one of the roles defined in roles.json.")
+            raise ValueError(f"Unauthorized role: {role}")
+            
         self.name = name
-        self.role = role
+        self.role = role.upper()
         self.sandbox = sandbox
         self.logger = logger
         self.project_name = project_info['name']
@@ -19,6 +24,9 @@ class AIAgent:
         self.client = genai.Client(api_key=api_key)
         self.model_id = model_id
         self.pool_callback = pool_callback
+        
+        from stratos.assets import load_tools
+        self.tool_definitions = load_tools()
         
         self.total_input_tokens = 0
         self.total_output_tokens = 0
@@ -80,33 +88,18 @@ class AIAgent:
             self.tool_map["request_specialist"] = self.pool_callback
 
     def _setup_function_declarations(self):
-        """Converts tool map to Gemini function declarations."""
+        """Converts tool map to Gemini function declarations using asset definitions."""
         self.tools = []
         for tool_name in self.tool_map:
-            self.tools.append(types.FunctionDeclaration(
-                name=tool_name,
-                description=self.tool_map[tool_name].__doc__ or "Execute action",
-                parameters=self._get_tool_schema(tool_name)
-            ))
-
-    def _get_tool_schema(self, name):
-        schemas = {
-            "write_file": {"type": "OBJECT", "properties": {"path": {"type": "STRING"}, "content": {"type": "STRING"}}, "required": ["path", "content"]},
-            "read_file": {"type": "OBJECT", "properties": {"path": {"type": "STRING"}, "start_line": {"type": "INTEGER"}, "end_line": {"type": "INTEGER"}}, "required": ["path"]},
-            "smart_replace": {"type": "OBJECT", "properties": {"path": {"type": "STRING"}, "old_text": {"type": "STRING"}, "new_text": {"type": "STRING"}}, "required": ["path", "old_text", "new_text"]},
-            "execute_command": {"type": "OBJECT", "properties": {"command": {"type": "STRING"}}, "required": ["command"]},
-            "grep_search": {"type": "OBJECT", "properties": {"pattern": {"type": "STRING"}, "path": {"type": "STRING"}}, "required": ["pattern"]},
-            "glob_search": {"type": "OBJECT", "properties": {"pattern": {"type": "STRING"}}, "required": ["pattern"]},
-            "search_web": {"type": "OBJECT", "properties": {"query": {"type": "STRING"}}, "required": ["query"]},
-            "web_fetch": {"type": "OBJECT", "properties": {"url": {"type": "STRING"}}, "required": ["url"]},
-            "ask_user": {"type": "OBJECT", "properties": {"question": {"type": "STRING"}}, "required": ["question"]},
-            "request_confirmation": {"type": "OBJECT", "properties": {"action": {"type": "STRING"}}, "required": ["action"]},
-            "git_commit": {"type": "OBJECT", "properties": {"message": {"type": "STRING"}}, "required": ["message"]},
-            "update_todo_list": {"type": "OBJECT", "properties": {"todo_content": {"type": "STRING"}}, "required": ["todo_content"]},
-            "report_status": {"type": "OBJECT", "properties": {"message": {"type": "STRING"}}, "required": ["message"]},
-            "request_specialist": {"type": "OBJECT", "properties": {"role_name": {"type": "STRING"}, "role_description": {"type": "STRING"}, "weight": {"type": "STRING", "enum": ["HEAVY", "MEDIUM", "LIGHT"]}}, "required": ["role_name", "role_description"]}
-        }
-        return schemas.get(name, {"type": "OBJECT", "properties": {}})
+            if tool_name in self.tool_definitions:
+                defn = self.tool_definitions[tool_name]
+                self.tools.append(types.FunctionDeclaration(
+                    name=tool_name,
+                    description=defn["description"],
+                    parameters=defn["parameters"]
+                ))
+            else:
+                self.logger.warning(f"Tool {tool_name} not found in tools.json definitions.")
 
     def think_and_act(self, task, context=""):
         """Main execution loop for the agent."""
@@ -147,9 +140,20 @@ class AIAgent:
 
     def _prepare_prompt(self, task, context):
         from stratos.assets import load_prompt
+        from stratos.core.roles import AgentRole
+        
+        # 1. Global mandate
         global_p = load_prompt("global_mandate", project_name=self.project_name, project_desc=self.project_desc)
-        perso_p = f"=== AGENT_PROFILE ===\nID: {self.name} | ROLE: {self.role}\n======================\n"
-        return f"{global_p}\n{perso_p}\nSTATE:\n{context}\n\nTASK: {task}"
+        
+        # 2. Specific role strategy (using roles.json mapping)
+        prompt_key = AgentRole.get_prompt_key(self.role)
+        strategy_p = load_prompt(prompt_key)
+        if "ERROR" in strategy_p: strategy_p = "" # Fallback if no specific strategy exists
+        
+        # 3. Agent identity and profile
+        perso_p = f"=== AGENT_PROFILE ===\nID: {self.name} | ROLE: {self.role.upper()}\n======================\n"
+        
+        return f"{global_p}\n{strategy_p}\n{perso_p}\nSTATE:\n{context}\n\nTASK: {task}"
 
     def _review_prompt(self, prompt):
         """Allows human to review and edit the generated prompt."""
