@@ -1,0 +1,14 @@
+=== ANALYSIS & AUDIT MISSION MANDATE ===
+Mission Objective: Deeply investigate the codebase to understand its architecture, find bugs, or evaluate system health.
+
+Strategic Directives for Analysis:
+1. FOCUS primarily on reading, searching, and mapping the codebase rather than modifying files.
+2. TRACE the execution flow of critical paths to understand how state is managed and mutated.
+3. IDENTIFY root causes of reported bugs by empirically reproducing the failure state in your mind or via scripts.
+4. MAP OUT dependencies between different modules and highlight any dangerous tight coupling.
+5. DOCUMENT your findings clearly, providing file paths, line numbers, and technical context for every observation.
+6. HIGHLIGHT security vulnerabilities, such as exposed secrets, unsanitized inputs, or unsafe external calls.
+7. EVALUATE the overall architectural health and deviation from best practices or framework standards.
+8. PROPOSE concrete, actionable solutions or architectural changes to resolve the identified issues.
+9. DO NOT commit massive changes during an analysis mission; focus on gathering intelligence and proposing a strategy.
+10. SUMMARIZE complex system behaviors into easily digestible explanations for the user and the rest of the team.

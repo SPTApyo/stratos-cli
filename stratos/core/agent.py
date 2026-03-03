@@ -9,7 +9,7 @@ load_dotenv()
 class AIAgent:
     """Refactored AI Agent following Clean Code principles: SRP and KISS."""
     
-    def __init__(self, name, role, sandbox, logger, api_key, project_info, pool_callback=None, model_id='gemini-2.5-flash'):
+    def __init__(self, name, role, sandbox, logger, api_key, project_info, mission_type="NEW_PROJECT", pool_callback=None, model_id='gemini-2.5-flash'):
         from stratos.core.roles import AgentRole
         if not AgentRole.is_valid_role(role):
             logger.error(f"FATAL: Unauthorized agent role '{role}'. Please use one of the roles defined in roles.json.")
@@ -17,6 +17,7 @@ class AIAgent:
             
         self.name = name
         self.role = role.upper()
+        self.mission_type = mission_type
         self.sandbox = sandbox
         self.logger = logger
         self.project_name = project_info['name']
@@ -141,19 +142,25 @@ class AIAgent:
     def _prepare_prompt(self, task, context):
         from stratos.assets import load_prompt
         from stratos.core.roles import AgentRole
+        from stratos.core.missions import MissionType
         
-        # 1. Global mandate
+        # 1. Global mandate (Technical core)
         global_p = load_prompt("global_mandate", project_name=self.project_name, project_desc=self.project_desc)
         
-        # 2. Specific role strategy (using roles.json mapping)
+        # 2. Mission mandate (Strategic objective)
+        mission_key = MissionType.get_prompt_key(self.mission_type)
+        mission_p = load_prompt(mission_key)
+        if "ERROR" in mission_p: mission_p = ""
+        
+        # 3. Role mandate (Specific expertise)
         prompt_key = AgentRole.get_prompt_key(self.role)
         strategy_p = load_prompt(prompt_key)
-        if "ERROR" in strategy_p: strategy_p = "" # Fallback if no specific strategy exists
+        if "ERROR" in strategy_p: strategy_p = ""
         
-        # 3. Agent identity and profile
-        perso_p = f"=== AGENT_PROFILE ===\nID: {self.name} | ROLE: {self.role.upper()}\n======================\n"
+        # 4. Agent identity and profile
+        perso_p = f"=== AGENT_PROFILE ===\nID: {self.name} | ROLE: {self.role.upper()} | MISSION_MODE: {self.mission_type}\n======================\n"
         
-        return f"{global_p}\n{strategy_p}\n{perso_p}\nSTATE:\n{context}\n\nTASK: {task}"
+        return f"{global_p}\n{mission_p}\n{strategy_p}\n{perso_p}\nSTATE:\n{context}\n\nTASK: {task}"
 
     def _review_prompt(self, prompt):
         """Allows human to review and edit the generated prompt."""

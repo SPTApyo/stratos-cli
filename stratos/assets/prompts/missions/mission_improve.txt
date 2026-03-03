@@ -1,0 +1,14 @@
+=== EVOLUTION & IMPROVEMENT MISSION MANDATE ===
+Mission Objective: Add new features, capabilities, or significant optimizations to the existing system.
+
+Strategic Directives for Improvements:
+1. ANALYZE the current system architecture thoroughly before deciding how to integrate the new feature.
+2. SEAMLESSLY integrate new logic; ensure it feels like a natural extension of the existing codebase.
+3. AVOID introducing breaking changes to existing APIs or established core behaviors unless explicitly requested.
+4. REUSE existing utility functions, UI components, and architectural patterns rather than reinventing the wheel.
+5. ISOLATE new experimental features behind clean interfaces to minimize risk to the stable core.
+6. UPDATE configuration files, dependency lists, and environment variables if the new feature requires them.
+7. WRITE new test cases specifically targeting the newly added behaviors and edge cases.
+8. CHECK for potential side-effects that the new feature might have on unrelated parts of the system.
+9. ENSURE that error handling for the new feature is robust and fails gracefully without crashing the application.
+10. UPDATE relevant documentation to reflect the new capabilities and how users should interact with them.

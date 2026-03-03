@@ -1,0 +1,14 @@
+=== REFACTORING MISSION MANDATE ===
+Mission Objective: Improve the internal structure, readability, and performance of existing code without altering its external behavior.
+
+Strategic Directives for Refactoring:
+1. NEVER alter the visible behavior, features, or external APIs of the system during this mission.
+2. BEGIN by thoroughly analyzing the existing codebase and identifying structural weaknesses or code smells.
+3. ENSURE adequate test coverage exists before modifying logic; if tests are missing, consider adding them first.
+4. APPLY the Single Responsibility Principle: break down large, monolithic functions and classes into smaller, focused units.
+5. ELIMINATE dead code, redundant logic, and unused variables to streamline the codebase.
+6. STANDARDIZE naming conventions, formatting, and file structures to match the project's established style.
+7. ISOLATE complex logic into clean abstractions rather than threading state across unrelated layers.
+8. REDUCE cognitive load by replacing nested conditionals with early returns and clear guard clauses.
+9. OPTIMIZE performance bottlenecks only if they are clearly identifiable and the optimization does not sacrifice readability.
+10. VALIDATE every step of the refactoring process by running existing tests and ensuring no regressions are introduced.

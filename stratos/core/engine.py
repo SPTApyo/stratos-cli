@@ -128,7 +128,7 @@ class MissionEngine:
                 save_env_var("GEMINI_API_KEY", key)
         return key
 
-    def run(self, project_name=None, project_desc=None, existing_path=None):
+    def run(self, project_name=None, project_desc=None, existing_path=None, mission_type="NEW_PROJECT"):
         if not project_name: project_name = Prompt.ask("PROJECT_NAME")
         if not project_desc: project_desc = self._get_default_desc(project_name)
         
@@ -158,7 +158,7 @@ class MissionEngine:
         SignalManager(logger, sandbox, meta_saver).register()
 
         # 5. Mission Start
-        pool = AIPool(sandbox, logger, self.api_key, {"name": project_name, "desc": project_desc})
+        pool = AIPool(sandbox, logger, self.api_key, {"name": project_name, "desc": project_desc}, mission_type=mission_type)
         pool.setup_default_pool()
         
         def mission_task():
@@ -198,5 +198,5 @@ class MissionEngine:
         except Exception: pass
         return desc
 
-def run_stratos(project_name=None, project_desc=None, existing_path=None):
-    MissionEngine().run(project_name, project_desc, existing_path)
+def run_stratos(project_name=None, project_desc=None, existing_path=None, mission_type="NEW_PROJECT"):
+    MissionEngine().run(project_name, project_desc, existing_path, mission_type=mission_type)

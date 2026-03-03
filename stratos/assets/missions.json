@@ -1,0 +1,27 @@
+{
+  "NEW_PROJECT": {
+    "id": "new",
+    "prompt": "mission_new_project",
+    "description": "Building a new system from specifications."
+  },
+  "REFACTOR": {
+    "id": "refactor",
+    "prompt": "mission_refactor",
+    "description": "Restructuring existing code for better quality/maintainability."
+  },
+  "IMPROVE": {
+    "id": "improve",
+    "prompt": "mission_improve",
+    "description": "Adding features or optimizing existing logic."
+  },
+  "ANALYZE": {
+    "id": "analyze",
+    "prompt": "mission_analyze",
+    "description": "Auditing code for understanding or bug hunting."
+  },
+  "DOCUMENTATION": {
+    "id": "docs",
+    "prompt": "mission_docs",
+    "description": "Generating or improving documentation and comments."
+  }
+}

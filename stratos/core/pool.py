@@ -74,11 +74,12 @@ class AIPool:
         "LIGHT": "gemini-2.5-flash"        
     }
 
-    def __init__(self, sandbox, logger, api_key, project_info):
+    def __init__(self, sandbox, logger, api_key, project_info, mission_type="NEW_PROJECT"):
         self.sandbox = sandbox
         self.logger = logger
         self.api_key = api_key
         self.project_info = project_info
+        self.mission_type = mission_type
         self.agents = {}
         self.specialists = {}
         self.blackboard = Blackboard(sandbox, logger)
@@ -99,6 +100,7 @@ class AIPool:
                 self.logger, 
                 self.api_key, 
                 self.project_info, 
+                mission_type=self.mission_type,
                 pool_callback=self.request_specialist, 
                 model_id=self.MODELS["HEAVY"] if role == "MANAGER" else self.MODELS["MEDIUM"]
             )
@@ -134,6 +136,7 @@ class AIPool:
             self.logger, 
             self.api_key, 
             self.project_info, 
+            mission_type=self.mission_type,
             pool_callback=self.request_specialist, 
             model_id=self.MODELS.get(weight, self.MODELS["MEDIUM"])
         )

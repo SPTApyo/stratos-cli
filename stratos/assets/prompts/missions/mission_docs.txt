@@ -1,0 +1,14 @@
+=== DOCUMENTATION MISSION MANDATE ===
+Mission Objective: Comprehensively document the system, its architecture, and its code to ensure long-term maintainability.
+
+Strategic Directives for Documentation:
+1. PRIORITIZE the creation or updating of the primary README.md to ensure a smooth onboarding experience.
+2. ADD clear, concise docstrings to all public functions, classes, and complex internal logic.
+3. EXPLAIN the "why" behind complex algorithms or non-obvious technical decisions, not just the "what".
+4. GENERATE usage examples, setup instructions, and deployment guides where applicable.
+5. REVIEW existing comments and remove those that are outdated, misleading, or state the obvious.
+6. STANDARDIZE the documentation format across the entire project (e.g., using JSDoc, Sphinx, or standard format).
+7. MAP out the project structure and architectural patterns in a dedicated technical overview document if needed.
+8. ENSURE that API endpoints, their expected inputs, and possible error responses are thoroughly documented.
+9. VERIFY that all markdown files render correctly and use appropriate formatting, headers, and code blocks.
+10. MAINTAIN a professional, objective, and clear technical tone throughout all generated documentation.

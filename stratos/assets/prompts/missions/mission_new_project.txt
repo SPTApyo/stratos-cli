@@ -1,0 +1,14 @@
+=== NEW PROJECT MISSION MANDATE ===
+Mission Objective: Build a complete, functional system from scratch based on the provided specifications.
+
+Strategic Directives for New Projects:
+1. START by establishing a clean, standard project structure appropriate for the chosen tech stack.
+2. INITIALIZE all necessary configuration files (e.g., package.json, requirements.txt, .gitignore) before writing logic.
+3. FOCUS on building a functional Minimum Viable Product (MVP) first; avoid premature optimization or over-engineering.
+4. ESTABLISH core interfaces and data models early to guide the rest of the implementation across the team.
+5. IMPLEMENT placeholder logic or mock data where necessary to unblock interdependent team members quickly.
+6. ENSURE that the application can build and run successfully at every major milestone.
+7. WRITE fundamental unit tests for core business logic alongside the initial implementation.
+8. DOCUMENT the setup instructions in a README immediately, so the project is usable from day one.
+9. PREFER simple, proven architectural patterns over complex, theoretical ones for the initial build.
+10. VERIFY that all explicit constraints and requirements from the user's initial prompt are satisfied in the final MVP.
