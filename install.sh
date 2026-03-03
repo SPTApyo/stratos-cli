@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# STRATOS | GLOBAL INSTALLER & UNINSTALLER
-# Industrial-grade tool for Linux systems
-
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
@@ -10,7 +7,6 @@ RED='\033[0;31m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-# Dynamic Metadata Extraction
 VERSION=$(grep "__version__" stratos/__init__.py | cut -d '"' -f 2)
 APP_NAME=$(grep "__app_name__" stratos/__init__.py | cut -d '"' -f 2)
 DESCRIPTION=$(grep "__description__" stratos/__init__.py | cut -d '"' -f 2)
@@ -96,7 +92,7 @@ case $MODE in
             python3 -m pip uninstall $pkg --yes --break-system-packages &> /dev/null || python3 -m pip uninstall $pkg --yes &> /dev/null
         done
         
-        # 2. Manual cleanup of bin files (Force cleanup of leftovers)
+        # 2. Manual cleanup of bin files
         echo -e "  - Cleaning up binary files..."
         rm -f "$HOME/.local/bin/stratos"
         sudo rm -f "/usr/local/bin/stratos" "/usr/bin/stratos" &> /dev/null

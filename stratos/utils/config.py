@@ -38,6 +38,7 @@ class ConfigManager:
     DEFAULTS = {
         "projects_path": str(Path.home() / "StratosProjects"),
         "theme": "stratos_dark",
+        "active_engine": None,
         "show_thoughts": True,
         "debug_mode": False,
         "display_mode": "dashboard",
@@ -50,8 +51,19 @@ class ConfigManager:
     def save(self, config: dict):
         ConfigFileHandler.write_json(self.CONFIG_PATH, config)
 
-    def get_api_key(self, key="GEMINI_API_KEY") -> str:
-        return ConfigFileHandler.read_env(self.ENV_PATH, key)
+    def get_api_key(self, provider=None) -> str:
+        """Returns the API key for the specified provider (defaults to active_engine)."""
+        if provider is None:
+            config = ConfigFileHandler.read_json(self.CONFIG_PATH, self.DEFAULTS)
+            provider = config.get("active_engine")
+            
+        if not provider:
+            return ""
+            
+        key = f"STRATOS_{provider.upper()}_API_KEY"
+        val = ConfigFileHandler.read_env(self.ENV_PATH, key)
+        
+        return val or ""
 
     def save_env(self, key: str, value: str):
         vars = {}
@@ -66,12 +78,13 @@ class ConfigManager:
             for k, v in vars.items():
                 f.write(f"{k}={v}\n")
 
-# Singletons and legacy support
 _manager = ConfigManager()
 def load_config(): return _manager.load()
 def save_config(config): return _manager.save(config)
-def get_env_var(key): return _manager.get_api_key(key)
+def get_env_var(key=None): return _manager.get_api_key(key)
 def save_env_var(key, value): return _manager.save_env(key, value)
 def get_user_id(): return getpass.getuser()
 STRATOS_HOME = ConfigManager.HOME
 ensure_home = lambda: ConfigManager.HOME.mkdir(parents=True, exist_ok=True)
+
+QUICK_MISSION_DESC = "MVP_TEST: Create a simple HTML/JS clock with a modern dark theme."

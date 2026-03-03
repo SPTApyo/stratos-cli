@@ -33,5 +33,4 @@ jobs:
         
     - name: Test
       run: |
-        # Only run tests if the tests directory exists
         if [ -d "tests" ]; then pytest; else echo "No tests found, skipping."; fi

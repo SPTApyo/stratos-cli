@@ -22,7 +22,6 @@ class LogParser:
         tag = cls.STYLE_MAP.get(style.lower(), "INFO")
         msg = str(message).strip()
         
-        # Priority tags check (e.g., "SUCCESS: ...")
         if ":" in msg[:10]:
             parts = msg.split(":", 1)
             header = parts[0].strip().upper()
@@ -30,7 +29,6 @@ class LogParser:
             elif header in ["ERROR", "ERR"]: tag = "ERR"; msg = parts[1].strip()
             elif header in cls.STYLE_MAP.values(): tag = header; msg = parts[1].strip()
 
-        # Sanitize
         msg = " ".join(msg.replace("STDOUT:", "").replace("STDERR:", "").replace("\n", " ").split())
         return tag, msg
 
@@ -44,16 +42,13 @@ class MissionState:
         self.logs = []; self.todo_list = []; self.current_cycle = 0
         self.unique_agents = set()
         
-        # Status
         self.paused = False; self.agent_is_waiting = False; self.pause_requested = False
         self.instruction_mode_requested = False
         
-        # Prompts
         self.active_prompt = None; self.prompt_mode = 'text'; self.prompt_input = ""
         self.prompt_cursor_index = 0; self.prompt_options = []; self.prompt_selection = 0
         self.prompt_ready = threading.Event(); self.prompt_session_id = 0
         
-        # Config mirrors
         self.show_thoughts = config.get("show_thoughts", True)
         self.show_results = config.get("show_results", True)
         self.display_mode = config.get("display_mode", "dashboard")
@@ -69,7 +64,6 @@ class ProjectLogger:
         tag, clean_msg = LogParser.parse(agent_name, message, style)
         entry = LogEntry(time=datetime.now().strftime("%H:%M:%S"), tag=f"{tag:<5}", agent=agent_name, msg=clean_msg)
         
-        # State updates
         self.state.current_agent = agent_name; self.state.agent_start_time = time.time()
         if tag == "ERR": self.state.error_count += 1
         if tag == "EXEC": self.state.total_commands += 1
@@ -129,7 +123,6 @@ class ProjectLogger:
         from stratos.ui.views.execution_view import render_execution_dashboard
         return render_execution_dashboard(self.state, styles, palette, self.console.size.height)
 
-    # API Wrappers
     def debug(self, m): self.log("SYSTEM", m, style="debug")
     def info(self, m): self.log("SYSTEM", m, style="info")
     def success(self, m): self.log("SYSTEM", m, style="success")

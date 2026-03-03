@@ -26,16 +26,20 @@ class ShellManager:
 
     def execute(self, command: str, timeout: int = 60) -> str:
         """Executes a bash command within the root directory."""
+        if self.logger: self.logger.debug(f"[EXEC-START] {command} (in {self.root_dir})")
         try:
             self.validate_command(command)
             result = subprocess.run(
                 command, shell=True, cwd=self.root_dir,
                 capture_output=True, text=True, timeout=timeout
             )
+            if self.logger: self.logger.debug(f"[EXEC-SUCCESS] Return Code: {result.returncode}")
             return f"CODE_{result.returncode}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}"
         except subprocess.TimeoutExpired:
+            if self.logger: self.logger.debug("[EXEC-TIMEOUT] Command timed out.")
             return "ERROR: Command timed out."
         except Exception as e:
+            if self.logger: self.logger.debug(f"[EXEC-CRASH] {str(e)}")
             return f"CRASH: {str(e)}"
 
     def git_init(self) -> str:

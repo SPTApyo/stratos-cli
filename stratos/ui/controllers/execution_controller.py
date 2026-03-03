@@ -61,7 +61,7 @@ class ExecutionController:
     def _set_raw_mode(self, fd):
         new_settings = termios.tcgetattr(fd)
         new_settings[3] = new_settings[3] & ~(termios.ECHO | termios.ICANON)
-        termios.tcsetattr(fd, termios.TCSADRAIN, termios.TCSADRAIN, new_settings)
+        termios.tcsetattr(fd, termios.TCSADRAIN, new_settings)
 
     def _handle_console_prompt(self, fd, render_func):
         with Live(get_renderable=lambda: render_func(self.logger.state, self.logger.state.prompt_mode, self.logger.state.prompt_input, self.logger.state.prompt_options, self.logger.state.prompt_selection, self.palette, self.logger.state.prompt_cursor_index),
@@ -97,11 +97,9 @@ class ExecutionController:
         """Entry point for key handling, routes to specialized handlers."""
         state = self.logger.state
         
-        # 1. Global Shortcuts
         if self._handle_global_shortcuts(key, state):
             return
 
-        # 2. Prompt Handling
         if state.active_prompt:
             self._handle_prompt_logic(key, state)
 

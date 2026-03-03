@@ -41,7 +41,7 @@ class ApprovalManager:
                     elif answer.lower() == 'n': return False, "User denied."
                     else:
                         if not answer: return False, "User denied (empty order)."
-                        return False, answer # User provided a specific order
+                        return False, answer
                 else:
                     self.logger.prompt_ready.clear()
                     

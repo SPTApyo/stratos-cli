@@ -1,15 +1,17 @@
-from google import genai
-from google.genai import types
 import os
 import time
+from typing import List
 from dotenv import load_dotenv
+from .engines.protocol import Message, MessagePart, ToolCall, ToolResponse, ToolDefinition
 
 load_dotenv()
 
 class AIAgent:
-    """Refactored AI Agent following Clean Code principles: SRP and KISS."""
+    """Refactored AI Agent: AI-model agnostic via AIEngine abstraction.
+    Uses universal protocol.py for message exchange.
+    """
     
-    def __init__(self, name, role, sandbox, logger, api_key, project_info, mission_type="NEW_PROJECT", pool_callback=None, model_id='gemini-2.5-flash'):
+    def __init__(self, name, role, sandbox, logger, ai_engine, project_info, mission_type="NEW_PROJECT", pool_callback=None):
         from stratos.core.roles import AgentRole
         if not AgentRole.is_valid_role(role):
             logger.error(f"FATAL: Unauthorized agent role '{role}'. Please use one of the roles defined in roles.json.")
@@ -22,220 +24,164 @@ class AIAgent:
         self.logger = logger
         self.project_name = project_info['name']
         self.project_desc = project_info['desc']
-        self.client = genai.Client(api_key=api_key)
-        self.model_id = model_id
+        
+        self.engine = ai_engine
         self.pool_callback = pool_callback
         
         from stratos.assets import load_tools
         self.tool_definitions = load_tools()
         
-        self.total_input_tokens = 0
-        self.total_output_tokens = 0
-
-        # Initialize tools
         self._setup_tool_map()
-        self._setup_function_declarations()
+        self._setup_tools_list()
 
     def _setup_tool_map(self):
-        """Defines the core tool mapping with safety wrappers."""
-        
-        def ask_user_wrapper(question):
-            self.logger.start_prompt(self.name, question)
-            res = self.sandbox.ask_user(question)
-            self.logger.stop_prompt()
-            return res
-
-        def confirm_wrapper(action):
-            options = [{"label": "Yes", "value": "y"}, {"label": "No", "value": "n"}]
-            self.logger.start_prompt(self.name, f"Confirm: {action}", details={"command": action}, options=options)
-            res = self.sandbox.request_confirmation(action)
-            self.logger.stop_prompt()
-            return res
-
-        def exec_wrapper(command):
-            self.logger.debug(f"[REQUEST] {self.name}: {command}")
-            options = [
-                {"label": "Allow", "value": "y"},
-                {"label": "Deny", "value": "n"},
-                {"label": "Change", "value": "o", "require_text": True}
-            ]
-            self.logger.start_prompt(self.name, "Execute command?", details={"command": command}, options=options)
-            allowed, result = self.sandbox.request_command_approval(self.name, command)
-            self.logger.stop_prompt()
-            
-            if allowed: return self.sandbox.execute_command(command)
-            return f"USER_DENIED: {result}"
-
-        self.tool_map = {
-            "write_file": self.sandbox.write_file,
-            "read_file": self.sandbox.read_file,
-            "smart_replace": self.sandbox.smart_replace,
-            "glob_search": self.sandbox.glob_search,
-            "grep_search": self.sandbox.grep_search,
-            "execute_command": exec_wrapper,
-            "search_web": self.sandbox.search_web,
-            "web_fetch": self.sandbox.web_fetch,
-            "ask_user": ask_user_wrapper,
-            "request_confirmation": confirm_wrapper,
-            "get_structure_tree": self.sandbox.get_structure_tree,
-            "git_init": self.sandbox.git_init,
-            "git_commit": self.sandbox.git_commit,
-            "install_dependencies": self.sandbox.install_dependencies,
-            "update_todo_list": self.sandbox.update_todo_list,
-            "report_status": lambda m: self.logger.info(m) or "SUCCESS"
+        """Dynamically maps tools from tools.json to Sandbox methods or local wrappers."""
+        self.tool_map = {}
+        wrappers = {
+            "ask_user": self._ask_user_wrapper,
+            "request_confirmation": self._confirm_wrapper,
+            "execute_command": self._exec_wrapper,
+            "report_status": lambda message: self.logger.info(message) or "SUCCESS"
         }
-        
-        if self.pool_callback:
-            self.tool_map["request_specialist"] = self.pool_callback
+        for tool_name in self.tool_definitions:
+            if tool_name == "request_specialist":
+                if self.pool_callback: self.tool_map[tool_name] = self.pool_callback
+                continue
+            if tool_name in wrappers:
+                self.tool_map[tool_name] = wrappers[tool_name]
+                continue
+            if hasattr(self.sandbox, tool_name):
+                self.tool_map[tool_name] = getattr(self.sandbox, tool_name)
+                continue
+            self.logger.warning(f"INTEGRITY ALERT: Tool '{tool_name}' defined in tools.json but NOT implemented in AIAgent or Sandbox.")
+        implemented_tools = set(self.tool_map.keys())
+        defined_tools = set(self.tool_definitions.keys())
+        if not defined_tools.issubset(implemented_tools):
+            missing = defined_tools - implemented_tools
+            self.logger.error(f"CRITICAL: Missing implementation for tools: {missing}")
 
-    def _setup_function_declarations(self):
-        """Converts tool map to Gemini function declarations using asset definitions."""
+    def _ask_user_wrapper(self, question):
+        self.logger.start_prompt(self.name, question)
+        res = self.sandbox.ask_user(question)
+        self.logger.stop_prompt()
+        return res
+
+    def _confirm_wrapper(self, action):
+        options = [{"label": "Yes", "value": "y"}, {"label": "No", "value": "n"}]
+        self.logger.start_prompt(self.name, f"Confirm: {action}", details={"command": action}, options=options)
+        res = self.sandbox.request_confirmation(action)
+        self.logger.stop_prompt()
+        return res
+
+    def _exec_wrapper(self, command):
+        self.logger.debug(f"[REQUEST] {self.name}: {command}")
+        options = [{"label": "Allow", "value": "y"}, {"label": "Deny", "value": "n"}, {"label": "Change", "value": "o", "require_text": True}]
+        self.logger.start_prompt(self.name, "Execute command?", details={"command": command}, options=options)
+        allowed, result = self.sandbox.request_command_approval(self.name, command)
+        self.logger.stop_prompt()
+        if allowed: return self.sandbox.execute_command(command)
+        return f"USER_DENIED: {result}"
+
+    def _setup_tools_list(self):
+        """Converts tool map to generic ToolDefinition list."""
         self.tools = []
         for tool_name in self.tool_map:
             if tool_name in self.tool_definitions:
                 defn = self.tool_definitions[tool_name]
-                self.tools.append(types.FunctionDeclaration(
-                    name=tool_name,
-                    description=defn["description"],
-                    parameters=defn["parameters"]
-                ))
-            else:
-                self.logger.warning(f"Tool {tool_name} not found in tools.json definitions.")
+                self.tools.append(ToolDefinition(name=tool_name, description=defn["description"], parameters=defn["parameters"]))
 
     def think_and_act(self, task, context=""):
-        """Main execution loop for the agent."""
+        """Main execution loop using generic Protocol."""
         self.logger.log(self.name, f"TASK: {task[:50]}...", style="agent")
         
-        # 1. Prepare and Review Prompt
         full_prompt = self._prepare_prompt(task, context)
         full_prompt = self._review_prompt(full_prompt)
         if not full_prompt: return "TASK_ABORTED"
 
-        messages = [types.Content(role="user", parts=[types.Part(text=full_prompt)])]
-        
-        # 2. Iterative reasoning loop
+        messages = [Message(role="user", parts=[MessagePart(text=full_prompt)])]
         turns = 0
         while turns < 25:
             self.logger.wait_if_paused()
             turns += 1
-            
-            # Call LLM
-            response_parts = self._call_llm(messages, turns)
-            if isinstance(response_parts, str): return response_parts # Error
-            
-            # Record response
-            model_content = types.Content(role="model", parts=response_parts)
-            messages.append(model_content)
-            
-            # Handle Text vs Tool calls
-            function_calls = [p.function_call for p in response_parts if p.function_call]
-            if not function_calls:
+            response_parts = self.engine.generate_content(messages, self.tools, turns, self.logger)
+            if isinstance(response_parts, str): return response_parts 
+            assistant_msg = Message(role="assistant", parts=response_parts)
+            messages.append(assistant_msg)
+            tool_calls = [p.tool_call for p in response_parts if p.tool_call]
+            if not tool_calls:
                 text = "".join([p.text for p in response_parts if p.text])
                 return text or "DONE"
-
-            # Execute Tools
-            tool_results = self._execute_tools(function_calls)
-            messages.append(types.Content(role="user", parts=tool_results))
-            
+            results_parts = self._execute_tools(tool_calls)
+            messages.append(Message(role="user", parts=results_parts))
         return "ERROR: MAX_TURNS_REACHED"
 
     def _prepare_prompt(self, task, context):
         from stratos.assets import load_prompt
         from stratos.core.roles import AgentRole
         from stratos.core.missions import MissionType
-        
-        # 1. Global mandate (Technical core)
         global_p = load_prompt("global_mandate", project_name=self.project_name, project_desc=self.project_desc)
-        
-        # 2. Mission mandate (Strategic objective)
         mission_key = MissionType.get_prompt_key(self.mission_type)
         mission_p = load_prompt(mission_key)
         if "ERROR" in mission_p: mission_p = ""
-        
-        # 3. Role mandate (Specific expertise)
         prompt_key = AgentRole.get_prompt_key(self.role)
         strategy_p = load_prompt(prompt_key)
         if "ERROR" in strategy_p: strategy_p = ""
-        
-        # 4. Agent identity and profile
         perso_p = f"=== AGENT_PROFILE ===\nID: {self.name} | ROLE: {self.role.upper()} | MISSION_MODE: {self.mission_type}\n======================\n"
-        
         return f"{global_p}\n{mission_p}\n{strategy_p}\n{perso_p}\nSTATE:\n{context}\n\nTASK: {task}"
 
     def _review_prompt(self, prompt):
         """Allows human to review and edit the generated prompt."""
-        options = [
-            {"label": "Confirm & Send", "value": "y"},
-            {"label": "Edit Prompt", "value": "e", "require_text": True},
-            {"label": "Abort Task", "value": "n"}
-        ]
+        options = [{"label": "Confirm & Send", "value": "y"}, {"label": "Edit Prompt", "value": "e", "require_text": True}, {"label": "Abort Task", "value": "n"}]
         self.logger.start_prompt(self.name, "Reviewing system prompt...", details={"prompt_preview": prompt}, options=options)
         res = self.sandbox.ask_user("Reviewing prompt...")
         self.logger.stop_prompt()
-        
         if res == "n": return None
-        if res and res != "y": return res # Return modified prompt
+        if res and res != "y": return res 
         return prompt
 
-    def _call_llm(self, messages, turn_count):
-        """Handles the actual API communication with retry logic."""
-        retry_count = 0
-        while retry_count < 3:
+    def _execute_tools(self, tool_calls: List[ToolCall]) -> List[MessagePart]:
+        """Executes generic tool calls and returns MessageParts with ToolResponses."""
+        parts = []
+        for tc in tool_calls:
+            target = next(iter(tc.args.values()), "") if tc.args else ""
+            self.logger.log(self.name, f"{tc.name} ({str(target)[:30]})", style="exec")
             try:
-                self.logger.wait_if_paused()
-                stream = self.client.models.generate_content_stream(
-                    model=self.model_id, 
-                    contents=messages, 
-                    config=types.GenerateContentConfig(tools=[types.Tool(function_declarations=self.tools)])
-                )
-                
-                accumulated_parts = []
-                full_text = ""
-                for chunk in stream:
-                    if chunk.usage_metadata:
-                        self.total_input_tokens += chunk.usage_metadata.prompt_token_count
-                        self.total_output_tokens += chunk.usage_metadata.candidates_token_count
-                    
-                    if not chunk.candidates: continue
-                    for part in chunk.candidates[0].content.parts:
-                        if part.text:
-                            full_text += part.text
-                            self.logger.update_spinner(f"Thinking (turn {turn_count})", thought=full_text)
-                        if part.function_call:
-                            accumulated_parts.append(part)
-                
-                if full_text and not accumulated_parts:
-                    accumulated_parts.append(types.Part(text=full_text))
-                return accumulated_parts
-                
-            except Exception as e:
-                retry_count += 1
-                if "429" in str(e) or "quota" in str(e).lower():
-                    time.sleep(2 ** retry_count)
-                else: return f"ERROR: {str(e)}"
-        return "ERROR: API_TIMEOUT"
-
-    def _execute_tools(self, function_calls):
-        """Executes a list of function calls and returns formatted results."""
-        results = []
-        for fc in function_calls:
-            args = fc.args or {}
-            target = next(iter(args.values()), "") if args else ""
-            self.logger.log(self.name, f"{fc.name} ({str(target)[:30]})", style="exec")
+                if tc.name in self.tool_map: res = self.tool_map[tc.name](**tc.args)
+                else: res = "ERROR: Unknown tool"
+            except Exception as e: res = f"ERROR: {str(e)}"
             
-            try:
-                if fc.name in self.tool_map:
-                    res = self.tool_map[fc.name](**args)
-                else:
-                    res = "ERROR: Unknown tool"
-            except Exception as e:
-                res = f"ERROR: {str(e)}"
+            res_str = str(res)
+            is_error = res_str.startswith("ERROR") or res_str.startswith("CRASH") or res_str.startswith("USER_DENIED")
             
             if self.logger.state.show_results:
-                self.logger.log(self.name, f"RESULT: {str(res)[:100]}", style="info")
+                from rich.panel import Panel
+                from rich.text import Text
+                
+                if len(res_str) > 250:
+                    head = res_str[:200]
+                    fade = res_str[200:240]
+                    display_res = Text(head, style="white")
+                    display_res.append(fade[:10], style="#BBBBBB")
+                    display_res.append(fade[10:20], style="#888888")
+                    display_res.append(fade[20:30], style="#555555")
+                    display_res.append(fade[30:], style="#333333")
+                    display_res.append("...", style="bold #333333")
+                else:
+                    display_res = Text(res_str, style="white")
+
+                if "\n" in res_str or "{" in res_str or "/" in res_str:
+                    display_res = Panel(display_res, border_style="dim cyan" if not is_error else "dim red", title=f"[dim]{'ERROR' if is_error else 'RESULT DATA'}[/]", expand=False)
+                
+                self.logger.log(self.name, display_res, style="info" if not is_error else "err")
+            else:
+                # Minimalist display: just Success/Fail
+                if is_error:
+                    self.logger.log(self.name, f"FAILED ({tc.name}) › {res_str[:50]}...", style="err")
+                else:
+                    self.logger.log(self.name, f"SUCCESS ({tc.name})", style="ok")
             
-            results.append(types.Part(function_response=types.FunctionResponse(name=fc.name, response={"result": res})))
-        return results
+            parts.append(MessagePart(tool_response=ToolResponse(name=tc.name, result=res, id=tc.id)))
+        return parts
 
     def get_costs(self):
-        return ((self.total_input_tokens / 1_000_000) * 0.10) + ((self.total_output_tokens / 1_000_000) * 0.40)
+        return self.engine.get_costs()

@@ -20,7 +20,6 @@ class TestNetworkManager(unittest.TestCase):
 
     @patch('stratos.core.io.network_manager.DDGS')
     def test_search_success(self, mock_ddgs):
-        # Setup mock for DuckDuckGo
         mock_instance = mock_ddgs.return_value.__enter__.return_value
         mock_instance.text.return_value = [
             {"title": "Result 1", "href": "url1", "body": "Snippet 1"}

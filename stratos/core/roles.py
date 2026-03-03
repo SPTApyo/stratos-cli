@@ -10,7 +10,6 @@ class AgentRole:
     @classmethod
     def _load_roles(cls) -> Dict:
         if cls._roles_cache is None:
-            # Get path to assets/roles.json relative to this file
             base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             roles_path = os.path.join(base_dir, "assets", "roles.json")
             try:
@@ -37,7 +36,15 @@ class AgentRole:
         data = cls.get_role_data(role_name)
         if data and "prompt" in data:
             return data["prompt"]
-        return f"{role_name.lower()}_strategy" # Fallback pattern
+        return f"{role_name.lower()}_strategy"
+
+    @classmethod
+    def get_tier(cls, role_name: str) -> str:
+        """Returns the model tier (HEAVY, MEDIUM, LIGHT) for the role."""
+        data = cls.get_role_data(role_name)
+        if data and "tier" in data:
+            return data["tier"]
+        return "LIGHT"
 
     @classmethod
     def get_default_roles(cls) -> Dict:

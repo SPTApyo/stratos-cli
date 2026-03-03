@@ -16,19 +16,16 @@ def parse_arguments():
     
     parser.add_argument("-v", "--version", action="version", version=f"Stratos CLI v{__version__}")
     
-    # Project Launch Args
     parser.add_argument("-p", "--project", metavar="NAME", help="Directly launch a specific project by name")
     parser.add_argument("-d", "--desc", metavar="TEXT", help="Description for the project (requires -p)")
     parser.add_argument("--quick", action="store_true", help="Quick launch MVP mode (equivalent to -p *)")
     
-    # Configuration Overrides
     parser.add_argument("--debug", action="store_true", help="Enable debug mode logging")
     parser.add_argument("--no-thoughts", action="store_true", help="Hide agent thought process (cleaner UI)")
     parser.add_argument("--theme", metavar="NAME", help="Override UI theme (e.g. 'dracula_dark')")
     parser.add_argument("--reset-config", action="store_true", help="Reset configuration to defaults")
     
-    # Advanced
-    parser.add_argument("--api-key", metavar="KEY", help="Override Gemini API Key for this session")
+    parser.add_argument("--api-key", metavar="KEY", help="Override Model API Key for this session")
 
     return parser.parse_args()
 
@@ -37,7 +34,6 @@ def main_entry():
     Console().clear()
     args = parse_arguments()
     
-    # Apply configuration resets first
     if args.reset_config:
         from stratos.utils.config import DEFAULT_CONFIG
         save_config(DEFAULT_CONFIG)
@@ -47,7 +43,18 @@ def main_entry():
     try:
         main(args)
     except KeyboardInterrupt:
-        print("\n\n  › STRATOS | User interruption. Closing...")
+        from rich.console import Console
+        from rich.panel import Panel
+        from rich.text import Text
+        from rich.rule import Rule
+        import time
+        
+        console = Console()
+        console.print("\n")
+        console.print(Rule(style="dim red"))
+        exit_msg = Text.from_markup(" [bold red]![/] [bold white]STRATOS INTERRUPTED[/] [dim]•[/] [gray]Process terminated by user[/]")
+        console.print(Panel(exit_msg, border_style="bold red", expand=False, padding=(0, 2)))
+        console.print(Text(f"  › SYSTEM OFFLINE | {time.strftime('%H:%M:%S')}\n", style="bold red"))
         sys.exit(0)
 
 if __name__ == "__main__":

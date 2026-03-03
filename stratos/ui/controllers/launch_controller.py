@@ -57,10 +57,38 @@ class StratosDashboard:
             return False
 
         if action_id == "PATH":
-            self._change_path(live); return False # False triggers Live restart in run()
+            self._change_path(live); return False
 
         if action_id == "key":
             self._update_api_key(live); return False
+
+        if action_id.startswith("SET_"):
+            provider = action_id.replace("SET_", "")
+            self.state.config["active_engine"] = provider
+            save_config(self.state.config)
+            return True
+
+        if action_id.startswith("ENGINE_CONFIG_"):
+            provider = action_id.replace("ENGINE_CONFIG_", "")
+            return self._show_engine_tiers(provider, live)
+
+        if action_id.startswith("TIER_CONFIG_"):
+            # action_id is TIER_CONFIG_{provider}_{tier}
+            parts = action_id.split("_")
+            provider = parts[2]
+            tier = parts[3]
+            return self._show_model_list(provider, tier, live)
+
+        if action_id.startswith("FAMILY_CONFIG_"):
+            # action_id is FAMILY_CONFIG_{provider}_{tier}_{family}
+            _, _, provider, tier, family = action_id.split("_", 4)
+            return self._show_family_models(provider, tier, family, live)
+
+        if action_id.startswith("SELECT_MODEL_"):
+            _, _, provider, tier, model = action_id.split("_", 4)
+            from stratos.core.engines.factory import EngineFactory
+            EngineFactory.save_engine_config(provider, tier, model)
+            return "TO_TIERS" 
 
         if action_id == "THOUGHTS": self.state.config["show_thoughts"] = not self.state.config.get("show_thoughts", True)
         elif action_id == "DEBUG": self.state.config["debug_mode"] = not self.state.config.get("debug_mode", False)
@@ -99,6 +127,9 @@ class StratosDashboard:
         self.should_exit_menu = False
         while not self.should_exit_menu:
             options = self.get_filtered_options()
+            if options:
+                self.state.selected_index = max(0, min(self.state.selected_index, len(options) - 1))
+            
             if select.select([sys.stdin], [], [], 0.05)[0]:
                 keys = os.read(fd, 1024).decode('utf-8', errors='ignore')
                 if keys == '\x1b': self._handle_esc(options, live)
@@ -146,6 +177,9 @@ class StratosDashboard:
         except: pass
 
     def _handle_key(self, key, options, live):
+        if not options: return
+        self.state.selected_index = max(0, min(self.state.selected_index, len(options) - 1))
+        
         if '\x1b[A' in key: self.state.selected_index = (self.state.selected_index - 1) % len(options)
         elif '\x1b[B' in key: self.state.selected_index = (self.state.selected_index + 1) % len(options)
         elif key == '\x1b': self._handle_esc(options, live)
@@ -171,21 +205,18 @@ class StratosDashboard:
 
     def _pick_directory(self, title, default_path, live):
         res = None
-        # 1. Try Zenity
         try:
             p = subprocess.run(["zenity", "--file-selection", "--directory", f"--title={title}"], capture_output=True, text=True)
             if p.returncode == 0: res = p.stdout.strip()
-            elif p.returncode == 1: return None # Explicit Cancel
+            elif p.returncode == 1: return None
         except: pass
         
-        # 2. Try Kdialog
         if not res:
             try:
                 p = subprocess.run(["kdialog", "--getexistingdirectory", default_path, "--title", title], capture_output=True, text=True)
                 if p.returncode == 0: res = p.stdout.strip()
             except: pass
 
-        # 3. Fallback to Console Input
         if not res:
             if live and live.is_started: live.stop()
             palette = get_palette(self.state.config.get("theme", "one_dark"))
@@ -194,24 +225,40 @@ class StratosDashboard:
 
     def _launch_new_project(self, live):
         palette = get_palette(self.state.config.get("theme", "one_dark"))
-        if not get_env_var("GEMINI_API_KEY"):
+        active_engine = self.state.config.get("active_engine")
+        if not active_engine:
+            self.state.last_error = "NO AI ENGINE SELECTED. Go to Settings > AI Engine."
+            return
+            
+        if not get_env_var(active_engine):
             if live and live.is_started: live.stop()
-            p = self.custom_prompt("ENTER GEMINI_API_KEY", palette, password=True)
-            if p: save_env_var("GEMINI_API_KEY", p)
+            p = self.custom_prompt(f"ENTER {active_engine} API KEY", palette, password=True)
+            if p: save_env_var(f"STRATOS_{active_engine}_API_KEY", p)
             else: return
         if live and live.is_started: live.stop()
         p_name = self.custom_prompt("› NEW PROJECT NAME", palette)
         if not p_name: return
-        p_desc = self.custom_prompt("› DESCRIPTION", palette, default="MISSION: ")
-        if not p_desc: return
+        
+        if p_name == "*":
+            from stratos.utils.config import QUICK_MISSION_DESC
+            p_desc = QUICK_MISSION_DESC
+        else:
+            p_desc = self.custom_prompt("› DESCRIPTION", palette, default="MISSION: ")
+            if not p_desc: return
+            
         run_stratos(p_name, p_desc)
 
     def _launch_existing_project(self, mode, live):
         palette = get_palette(self.state.config.get("theme", "one_dark"))
-        if not get_env_var("GEMINI_API_KEY"):
+        active_engine = self.state.config.get("active_engine")
+        if not active_engine:
+            self.state.last_error = "NO AI ENGINE SELECTED. Go to Settings > AI Engine."
+            return
+            
+        if not get_env_var(active_engine):
             if live and live.is_started: live.stop()
-            p = self.custom_prompt("ENTER GEMINI_API_KEY", palette, password=True)
-            if p: save_env_var("GEMINI_API_KEY", p)
+            p = self.custom_prompt(f"ENTER {active_engine} API KEY", palette, password=True)
+            if p: save_env_var(f"STRATOS_{active_engine}_API_KEY", p)
             else: return
         e_path = self._pick_directory("MISSION TARGET FOLDER", self.state.config.get("projects_path", ""), live)
         if not e_path or not os.path.isdir(os.path.expanduser(e_path)): return
@@ -231,12 +278,173 @@ class StratosDashboard:
     def _update_api_key(self, live):
         if live and live.is_started: live.stop()
         palette = get_palette(self.state.config.get("theme", "one_dark"))
-        key = self.custom_prompt("› GEMINI_API_KEY", palette, password=True)
-        if key: save_env_var("GEMINI_API_KEY", key)
+        active_engine = self.state.config.get("active_engine")
+        if not active_engine:
+            self.state.last_error = "NO AI ENGINE SELECTED. Go to Settings > AI Engine."
+            return
+            
+        key = self.custom_prompt(f"› {active_engine}_API_KEY", palette, password=True)
+        if key: save_env_var(f"STRATOS_{active_engine}_API_KEY", key)
 
     def _has_gui(self):
         try: return subprocess.run(["which", "zenity"], capture_output=True).returncode == 0
         except: return False
+
+    def _show_engine_tiers(self, provider, live):
+        from stratos.core.engines.factory import EngineFactory
+        tiers = EngineFactory.get_tier_models(provider)
+        
+        options = []
+        options.append({
+            "id": f"SET_{provider}",
+            "label": "[bold green]ACTIVATE[/]",
+            "desc": f"Set {provider} as active engine"
+        })
+        for t, m in tiers.items():
+            options.append({
+                "id": f"TIER_CONFIG_{provider}_{t}",
+                "label": t,
+                "desc": f"Current: {m}"
+            })
+        options.append({"id": "BACK_SETTINGS", "label": "BACK", "desc": "Return to settings"})
+        
+        return self._run_dynamic_menu(f"{provider} TIERS", options, live)
+
+    def _show_model_list(self, provider, tier, live):
+        from stratos.core.engines.factory import EngineFactory
+        live.update(render_launch_dashboard(self.state, loading=True))
+        
+        models = []
+        error_msg = ""
+        try:
+            key = get_env_var(provider)
+            if not key: raise ValueError(f"No API key found for {provider}")
+            engine = EngineFactory.create_engine(provider, tier, key)
+            models = engine.list_models()
+        except Exception as e:
+            error_msg = f"API ERROR: {str(e)}"
+
+        if error_msg:
+            options = [{"id": "ERROR", "label": "[bold red]FAILED[/]", "desc": error_msg}]
+            options.append({"id": "BACK_SETTINGS", "label": "BACK", "desc": "Return to tiers"})
+            self._run_dynamic_menu(f"SELECT {tier} MODEL", options, live)
+            return
+
+        families = {}
+        for m in models:
+            family = "Other"
+            m_lower = m.lower()
+            if provider.upper() == "CLAUDE":
+                if "opus" in m_lower: family = "Opus"
+                elif "sonnet" in m_lower: family = "Sonnet"
+                elif "haiku" in m_lower: family = "Haiku"
+            elif provider.upper() == "OPENAI":
+                if "gpt-4" in m_lower: family = "GPT-4"
+                elif "gpt-3.5" in m_lower: family = "GPT-3.5"
+                elif "o1" in m_lower: family = "o1"
+                elif "o3" in m_lower: family = "o3"
+                else: family = "Experimental"
+            elif provider.upper() == "GEMINI":
+                if "flash" in m_lower: family = "Flash"
+                elif "pro" in m_lower: family = "Pro"
+                elif "nano" in m_lower: family = "Nano"
+                elif "research" in m_lower: family = "Research"
+                elif "gemma" in m_lower: family = "Gemma"
+                elif "robotics" in m_lower: family = "Robotics"
+                elif "compute" in m_lower: family = "Compute"
+                elif "learnlm" in m_lower: family = "LearnLM"
+                elif "aqa" in m_lower: family = "AQA"
+                else: family = "Experimental"
+            
+            if family not in families: families[family] = []
+            families[family].append(m)
+
+        if len(families) <= 1:
+            return self._show_family_models(provider, tier, list(families.keys())[0] if families else "Models", live, models_override=models)
+
+        options = []
+        for f in sorted(families.keys()):
+            options.append({
+                "id": f"FAMILY_CONFIG_{provider}_{tier}_{f}",
+                "label": f.upper(),
+                "desc": f"View {len(families[f])} models in this family"
+            })
+        options.append({"id": "BACK_SETTINGS", "label": "BACK", "desc": "Return to tiers"})
+        
+        self.state._temp_families = families 
+        return self._run_dynamic_menu(f"SELECT {provider} FAMILY", options, live)
+
+    def _show_family_models(self, provider, tier, family, live, models_override=None):
+        import re
+        families = getattr(self.state, '_temp_families', {})
+        models = models_override or families.get(family, [])
+        
+        def natural_sort_key(s):
+            return [int(text) if text.isdigit() else text.lower()
+                    for text in re.split('([0-9]+)', s)]
+        
+        models.sort(key=natural_sort_key, reverse=True)
+        
+        options = []
+        for m in models:
+            options.append({
+                "id": f"SELECT_MODEL_{provider}_{tier}_{m}",
+                "label": m[:30],
+                "desc": f"Set as {tier} model"
+            })
+        options.append({"id": "BACK_SETTINGS", "label": "BACK", "desc": "Return to families"})
+        return self._run_dynamic_menu(f"{family.upper()} MODELS", options, live)
+
+    def _run_dynamic_menu(self, title, options, live):
+        """Runs a blocking sub-menu loop with dynamic options and mouse support."""
+        local_idx = 0
+        
+        while True:
+            self.state.selected_index = local_idx
+            live.update(render_launch_dashboard(self.state, options=options))
+            
+            if select.select([sys.stdin], [], [], 0.05)[0]:
+                keys = os.read(sys.stdin.fileno(), 1024).decode('utf-8', errors='ignore')
+                
+                if keys.startswith('\x1b[<'):
+                    try:
+                        suffix = keys[-1]; parts = keys[3:-1].split(';'); button = int(parts[0]); x = int(parts[1]); y = int(parts[2])
+                        clicked_row = y - 20 
+                        if 0 <= clicked_row < len(options):
+                            local_idx = clicked_row
+                            self.state.selected_index = local_idx
+                            if suffix == 'M' and button == 0:
+                                opt = options[clicked_row]
+                                if opt["id"] == "BACK_SETTINGS": return "BACK"
+                                res = self.handle_action(opt["id"], live)
+                                
+                                if res == "TO_TIERS":
+                                    if "MODELS" in title: return "TO_TIERS"
+                                    return False
+                                    
+                                if res == "BACK": continue
+                                if res != False: return res
+                        if suffix == 'M':
+                            if button == 64: local_idx = (local_idx - 1) % len(options)
+                            elif button == 65: local_idx = (local_idx + 1) % len(options)
+                    except: pass
+                
+                elif '\x1b[A' in keys: local_idx = (local_idx - 1) % len(options)
+                elif '\x1b[B' in keys: local_idx = (local_idx + 1) % len(options)
+                elif keys in ['\r', '\n']:
+                    opt = options[local_idx]
+                    if opt["id"] == "BACK_SETTINGS": return "BACK"
+                    res = self.handle_action(opt["id"], live)
+                    
+                    if res == "TO_TIERS":
+                        if "MODELS" in title: return "TO_TIERS"
+                        return False 
+                        
+                    if res == "BACK": continue
+                    if res != False: return res 
+                elif keys == '\x1b': return "BACK"
+            
+            time.sleep(0.01)
 
     def custom_prompt(self, label, palette, default="", password=False):
         input_text = default; cursor_pos = len(input_text)

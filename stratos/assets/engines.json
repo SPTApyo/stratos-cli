@@ -1,0 +1,20 @@
+{
+  "GEMINI": {
+    "module": "stratos.core.engines.gemini_engine",
+    "class": "GeminiEngine",
+    "models": {
+      "HEAVY": "gemini-3.1-pro-preview",
+      "MEDIUM": "gemini-3-pro-preview",
+      "LIGHT": "gemini-2.5-flash"
+    }
+  },
+  "CLAUDE": {
+    "module": "stratos.core.engines.claude_engine",
+    "class": "ClaudeEngine",
+    "models": {
+      "HEAVY": "claude-opus-4-6",
+      "MEDIUM": "claude-sonnet-4-6",
+      "LIGHT": "claude-haiku-4-5-20251001"
+    }
+  }
+}

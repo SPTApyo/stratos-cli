@@ -35,4 +35,4 @@ class MissionType:
         data = cls.get_mission_data(mission_key)
         if data and "prompt" in data:
             return data["prompt"]
-        return f"mission_{mission_key.lower()}" # Fallback
+        return f"mission_{mission_key.lower()}"

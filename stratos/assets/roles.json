@@ -3,30 +3,35 @@
     "id": "manager",
     "prompt": "manager_strategy",
     "description": "Orchestrates the mission and delegates tasks.",
-    "is_default": true
+    "is_default": true,
+    "tier": "HEAVY"
   },
   "ARCHITECT": {
     "id": "architect",
     "prompt": "architect_strategy",
     "description": "Designs system structures and technical roadmaps.",
-    "is_default": true
+    "is_default": true,
+    "tier": "MEDIUM"
   },
   "CODER": {
     "id": "coder",
     "prompt": "coder_strategy",
     "description": "Implements idiomatic and robust code.",
-    "is_default": true
+    "is_default": true,
+    "tier": "MEDIUM"
   },
   "REVIEWER": {
     "id": "reviewer",
     "prompt": "reviewer_strategy",
     "description": "Audits code for quality, security, and performance.",
-    "is_default": true
+    "is_default": true,
+    "tier": "MEDIUM"
   },
   "DOCUMENTATION": {
     "id": "documentation",
     "prompt": "documentation_strategy",
     "description": "Technical writer: update manuals and README.",
-    "is_default": false
+    "is_default": false,
+    "tier": "LIGHT"
   }
 }

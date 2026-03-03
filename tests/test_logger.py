@@ -9,21 +9,17 @@ class TestLoggerEnhanced(unittest.TestCase):
         self.logger = ProjectLogger(self.config, "/tmp/proj")
 
     def test_log_parser_full(self):
-        # Test all styles
         for style in LogParser.STYLE_MAP:
             tag, _ = LogParser.parse("A", "msg", style)
             self.assertEqual(tag, LogParser.STYLE_MAP[style])
         
-        # Test unknown style
         tag, _ = LogParser.parse("A", "msg", "unknown")
         self.assertEqual(tag, "INFO")
 
     def test_prompt_priority(self):
-        # SYSTEM prompt (priority 10)
         sid1 = self.logger.start_prompt("SYSTEM", "High Priority")
         self.assertEqual(sid1, 1)
         
-        # AGENT prompt (priority 0) - should be rejected
         sid2 = self.logger.start_prompt("AGENT_CODER", "Low Priority")
         self.assertEqual(sid2, -1)
         self.assertEqual(self.logger.state.active_prompt["agent"], "SYSTEM")

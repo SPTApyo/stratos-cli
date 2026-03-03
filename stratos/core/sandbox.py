@@ -16,12 +16,10 @@ class Sandbox:
         if not self.root_dir.exists():
             self.root_dir.mkdir(parents=True)
             
-        # UI/State references
         self.live_instance = None
         self._logger_instance = None
         self.ui_active_event = None
 
-        # Specialized Managers
         self.files = FileManager(self.root_dir)
         self.shell = ShellManager(self.root_dir)
         self.approval = ApprovalManager(None)
@@ -34,7 +32,6 @@ class Sandbox:
     @logger_instance.setter
     def logger_instance(self, value):
         self._logger_instance = value
-        # Propagate logger to managers
         self.files.logger = value
         self.shell.logger = value
         self.approval.logger = value
@@ -48,7 +45,6 @@ class Sandbox:
     def auto_approve(self, value):
         self.approval.auto_approve = value
 
-    # --- DELEGATED FILE OPERATIONS ---
 
     def write_file(self, path: str, content: str) -> str:
         if self.logger_instance: self.logger_instance.debug(f"[FILE-WRITE] {path}")
@@ -68,7 +64,6 @@ class Sandbox:
         if self.logger_instance: self.logger_instance.debug(f"[SMART-REPLACE] {path}")
         return self.files.replace(path, old_text, new_text)
 
-    # --- DELEGATED SHELL OPERATIONS ---
 
     def execute_command(self, command: str) -> str:
         if self.logger_instance: self.logger_instance.debug(f"[EXEC] {command}")
@@ -83,7 +78,6 @@ class Sandbox:
     def install_dependencies(self) -> str:
         return self.shell.install_dependencies()
 
-    # --- DELEGATED HUMAN INTERACTION ---
 
     def ask_user(self, question: str) -> str:
         return self.approval.ask(question)
@@ -94,7 +88,6 @@ class Sandbox:
     def request_command_approval(self, agent_name: str, command: str) -> tuple[bool, str]:
         return self.approval.request_approval(agent_name, command)
 
-    # --- DELEGATED NETWORK OPERATIONS ---
 
     def web_fetch(self, url: str) -> str:
         return self.network.fetch(url)
@@ -102,7 +95,6 @@ class Sandbox:
     def search_web(self, query: str) -> str:
         return self.network.search(query)
 
-    # --- UTILITIES ---
 
     def update_todo_list(self, todo_content: str) -> str:
         """Updates the global team TODO_LIST (Logic placeholder)."""

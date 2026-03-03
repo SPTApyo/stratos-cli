@@ -50,8 +50,19 @@
             {"id": "SHOW_RESULTS", "label": "RESULT PREVIEW", "desc": "Show code snippets in logs", "interaction": {"trigger": "space", "back": false}},
             {"id": "THOUGHTS", "label": "THOUGHT FLOW", "desc": "Toggle reasoning logs", "interaction": {"trigger": "space", "back": false}},
             {"id": "DEBUG", "label": "DEBUG MODE", "desc": "Technical tracing", "interaction": {"trigger": "space", "back": false}},
-            {"id": "AUTH", "label": "IDENTITY CONFIG", "desc": "Manage Gemini API Key", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "AI_SELECT", "label": "AI ENGINE", "desc": "Switch provider & view tiers", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "AUTH", "label": "IDENTITY CONFIG", "desc": "Manage Model API Key", "interaction": {"trigger": "enter", "back": false}},
             {"id": "BACK", "label": "BACK TO MAIN", "desc": "Return to control", "interaction": {"trigger": "enter", "back": true}}
+        ]
+    },
+    "AI_SELECT": {
+        "title": "AI ENGINE",
+        "path": "/main/settings/ai",
+        "options": [
+            {"id": "ENGINE_CONFIG_GEMINI", "label": "GEMINI CONFIG", "desc": "Configure tiers & select as active", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "ENGINE_CONFIG_CLAUDE", "label": "CLAUDE CONFIG", "desc": "Configure tiers & select as active", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "ENGINE_CONFIG_OPENAI", "label": "OPENAI CONFIG", "desc": "Configure tiers & select as active", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "BACK_SETTINGS", "label": "BACK", "desc": "Return to settings", "interaction": {"trigger": "enter", "back": true}}
         ]
     },
     "THEME_MENU": {
@@ -97,7 +108,7 @@
         "title": "IDENTITY",
         "path": "/main/settings/auth",
         "options": [
-            {"id": "key", "label": "UPDATE API KEY", "desc": "Enter your Gemini API Key", "interaction": {"trigger": "enter", "back": false}},
+            {"id": "key", "label": "UPDATE API KEY", "desc": "Enter your Model API Key", "interaction": {"trigger": "enter", "back": false}},
             {"id": "BACK_SETTINGS", "label": "BACK", "desc": "Return to settings", "interaction": {"trigger": "enter", "back": true}}
         ]
     }

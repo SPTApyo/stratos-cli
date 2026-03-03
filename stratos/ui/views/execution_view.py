@@ -80,13 +80,11 @@ class DashboardRenderer:
 def render_execution_dashboard(state, styles, palette, term_height):
     """Entry point for rendering, orchestrating specialized sub-renderers."""
     
-    # 1. Dimensions
     prompt_height = DashboardRenderer.calculate_prompt_height(state, term_height)
     todo_height = len(state.todo_list) + 2 if state.todo_expanded else 5
     reserved = 3 + todo_height + 8 + (prompt_height if prompt_height > 0 else 0)
     max_logs = max(3, term_height - reserved)
 
-    # 2. Components
     header = DashboardRenderer.render_header(state, styles)
     logs = DashboardRenderer.render_log_table(state, styles, max_logs)
     roadmap = DashboardRenderer.render_roadmap(state, styles)
@@ -94,7 +92,6 @@ def render_execution_dashboard(state, styles, palette, term_height):
     m_left = Text(f"TOTAL: {int(time.time() - state.start_time)}s | STEP: {int(time.time() - state.agent_start_time)}s", style=styles["base"])
     m_right = Text(f"TOKENS: {state.total_tokens} | ERRORS: {state.error_count}", style=styles["base"])
 
-    # 3. Layout Assembly
     layout = Layout()
     sections = [
         Layout(make_gradient_panel(header, palette=palette), size=3),
