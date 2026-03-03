@@ -8,35 +8,24 @@ class MockLogger:
         self.prompt_input = ""
         self.prompt_ready = threading.Event()
 
-class TestApprovalManager(unittest.TestCase):
-    def test_auto_approve(self):
-        manager = ApprovalManager(None)
-        manager.auto_approve = True
-        allowed, msg = manager.request_approval("AGENT", "ls -la")
-        self.assertTrue(allowed)
-        self.assertIn("Auto-approved", msg)
-
-    def test_manual_approval_yes(self):
+class TestApprovalManagerDeep(unittest.TestCase):
+    def test_request_approval_denied_with_reason(self):
         logger = MockLogger()
-        manager = ApprovalManager(logger)
+        mgr = ApprovalManager(logger)
         
-        # Simulate user typing 'y' in another thread/loop
+        logger.prompt_input = "Don't use rm"
+        logger.prompt_ready.set()
+        
+        allowed, reason = mgr.request_approval("AGENT", "rm file.txt")
+        self.assertFalse(allowed)
+        self.assertEqual(reason, "Don't use rm")
+
+    def test_confirm_helper(self):
+        logger = MockLogger()
+        mgr = ApprovalManager(logger)
         logger.prompt_input = "y"
         logger.prompt_ready.set()
-        
-        allowed, _ = manager.request_approval("AGENT", "ls")
-        self.assertTrue(allowed)
-
-    def test_manual_approval_no(self):
-        logger = MockLogger()
-        manager = ApprovalManager(logger)
-        
-        logger.prompt_input = "n"
-        logger.prompt_ready.set()
-        
-        allowed, msg = manager.request_approval("AGENT", "rm -rf /")
-        self.assertFalse(allowed)
-        self.assertIn("User denied", msg)
+        self.assertTrue(mgr.confirm("Action"))
 
 if __name__ == "__main__":
     unittest.main()

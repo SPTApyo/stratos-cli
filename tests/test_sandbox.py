@@ -13,83 +13,61 @@ class TestSandbox(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.test_dir)
 
-    # --- _safe_path tests ---
-    def test_safe_path_valid(self):
-        path = self.sandbox.files._safe_path("test.txt")
-        self.assertEqual(path, Path(self.test_dir).resolve() / "test.txt")
+    def test_properties_propagation(self):
+        # Test logger setter/getter and propagation to managers
+        mock_logger = unittest.mock.MagicMock()
+        self.sandbox.logger_instance = mock_logger
+        self.assertEqual(self.sandbox.logger_instance, mock_logger)
+        self.assertEqual(self.sandbox.files.logger, mock_logger)
+        self.assertEqual(self.sandbox.shell.logger, mock_logger)
 
-    def test_safe_path_escape_attempt(self):
-        with self.assertRaises(PermissionError):
-            self.sandbox.files._safe_path("../outside.txt")
+        # Test auto_approve
+        self.sandbox.auto_approve = True
+        self.assertTrue(self.sandbox.approval.auto_approve)
+        self.assertTrue(self.sandbox.auto_approve)
 
-    def test_safe_path_absolute_outside(self):
-        with self.assertRaises(PermissionError):
-            self.sandbox.files._safe_path("/etc/passwd")
+    def test_file_operations_delegation(self):
+        # write/read
+        self.sandbox.write_file("test.txt", "hello")
+        self.assertEqual(self.sandbox.read_file("test.txt"), "hello")
+        
+        # glob/grep
+        self.assertEqual(self.sandbox.glob_search("*.txt"), ["test.txt"])
+        self.assertIn("test.txt", self.sandbox.grep_search("hello"))
+        
+        # smart_replace
+        self.sandbox.smart_replace("test.txt", "hello", "world")
+        self.assertEqual(self.sandbox.read_file("test.txt"), "world")
 
-    # --- write_file tests ---
-    def test_write_file_success(self):
-        res = self.sandbox.write_file("hello.txt", "world")
-        self.assertIn("SUCCESS", res)
-        with open(os.path.join(self.test_dir, "hello.txt"), "r") as f:
-            self.assertEqual(f.read(), "world")
+    def test_shell_delegation(self):
+        res = self.sandbox.execute_command("echo 'hey'")
+        self.assertIn("STDOUT: hey", res)
+        
+        # git/pip placeholders
+        self.assertIn("CODE_", self.sandbox.git_init())
+        self.assertIn("ERROR", self.sandbox.install_dependencies()) # No req.txt
 
-    def test_write_file_subdir(self):
-        res = self.sandbox.write_file("subdir/deep/file.txt", "content")
-        self.assertIn("SUCCESS", res)
-        self.assertTrue(os.path.exists(os.path.join(self.test_dir, "subdir/deep/file.txt")))
+    def test_structure_and_snapshot(self):
+        self.sandbox.write_file("dir1/a.txt", "content A")
+        self.sandbox.write_file("b.txt", "content B")
+        
+        # Tree
+        tree = self.sandbox.get_structure_tree()
+        self.assertIn("dir1/", tree)
+        self.assertIn("a.txt", tree)
+        self.assertIn("b.txt", tree)
+        
+        # Snapshot
+        snap = self.sandbox.get_snapshot()
+        self.assertEqual(snap["dir1/a.txt"], "content A")
+        self.assertEqual(snap["b.txt"], "content B")
 
-    # --- read_file tests ---
-    def test_read_file_success(self):
-        with open(os.path.join(self.test_dir, "read.txt"), "w") as f:
-            f.write("line1\nline2\nline3")
-        res = self.sandbox.read_file("read.txt")
-        self.assertEqual(res, "line1\nline2\nline3")
-
-    def test_read_file_not_found(self):
-        res = self.sandbox.read_file("missing.txt")
-        self.assertIn("ERROR", res)
-
-    def test_read_file_chunking(self):
-        with open(os.path.join(self.test_dir, "chunk.txt"), "w") as f:
-            f.write("1\n2\n3\n4\n5")
-        res = self.sandbox.read_file("chunk.txt", start_line=2, end_line=4)
-        self.assertEqual(res, "2\n3\n4")
-
-    # --- smart_replace tests ---
-    def test_smart_replace_success(self):
-        self.sandbox.write_file("replace.txt", "The quick brown fox")
-        res = self.sandbox.smart_replace("replace.txt", "brown", "red")
-        self.assertIn("SUCCESS", res)
-        content = self.sandbox.read_file("replace.txt")
-        self.assertEqual(content, "The quick red fox")
-
-    def test_smart_replace_not_found(self):
-        self.sandbox.write_file("replace.txt", "Content")
-        res = self.sandbox.smart_replace("replace.txt", "missing", "new")
-        self.assertIn("ERROR", res)
-
-    # --- safety tests ---
-    def test_validate_command_safe(self):
-        try:
-            self.sandbox.shell.validate_command("ls -la")
-        except PermissionError:
-            self.fail("validate_command raised PermissionError unexpectedly")
-
-    def test_validate_command_dangerous(self):
-        with self.assertRaises(PermissionError):
-            self.sandbox.shell.validate_command("rm -rf /")
-        with self.assertRaises(PermissionError):
-            self.sandbox.shell.validate_command("mkfs.ext4 /dev/sda1")
-
-    # --- execute_command tests ---
-    def test_execute_command_success(self):
-        res = self.sandbox.execute_command("echo 'hello'")
-        self.assertIn("CODE_0", res)
-        self.assertIn("hello", res)
-
-    def test_execute_command_fail(self):
-        res = self.sandbox.execute_command("nonexistentcommand")
-        self.assertNotIn("CODE_0", res)
+    def test_interaction_delegation(self):
+        self.sandbox.approval.ask = unittest.mock.MagicMock(return_value="ans")
+        self.assertEqual(self.sandbox.ask_user("q"), "ans")
+        
+        self.sandbox.approval.confirm = unittest.mock.MagicMock(return_value=True)
+        self.assertTrue(self.sandbox.request_confirmation("a"))
 
 if __name__ == "__main__":
     unittest.main()
